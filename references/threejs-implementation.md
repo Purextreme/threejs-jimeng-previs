@@ -89,6 +89,8 @@ Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. Do not call 
 
 Use `npm run capture:jimeng` to create the minimum five animation samples plus configured critical frames. Open the PNG files and judge them visually; do not treat the JSON manifest as visual proof. Add `validation.criticalFrames` to the config for cuts, fastest moves, closest camera approaches, or poses with a high occlusion risk.
 
+Uniform samples can miss short timing events. Add critical frames around first visibility and settling, plus both ends of any required static hold. When the opening must be empty, inspect frame 1. When the ending must be frozen, render the first and last hold frames and compare their authored scene state; matching PNG hashes are useful supporting evidence when the renderer is deterministic, but do not replace visual inspection.
+
 ## H.264 conversion
 
 Run `npm run export:jimeng` for the bundled deterministic frame-sequence path. Its FFmpeg invocation is equivalent to:

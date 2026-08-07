@@ -62,12 +62,14 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
    `node <skill-dir>/scripts/validate-project.mjs <project-dir>`
 
 3. Run `npm run capture:jimeng`. For animation, capture at least five evenly distributed frames: first, 25%, 50%, 75%, and last. Add every configured critical frame and the frames immediately before and after each camera cut. For a still, capture at least one final-resolution frame.
+   - Also add event-boundary frames when the brief specifies an empty opening, a fast entrance, a settle deadline, or a static end hold: immediately before/at/after first visibility, the settle frame, and the first and last frames of the hold.
 4. Actually open and visually inspect the captured PNG files. A successful build, browser load, screenshot command, pixel heuristic, or diagnostics JSON never substitutes for visual inspection. Confirm:
    - every object remains a neutral white model with no texture or colored-material leakage;
    - silhouette, scale, depth, contact shadows, and important product features remain readable;
    - the subject remains framed with no clipping, camera penetration, sudden flip, jump, or unintended occlusion;
    - debug UI, grid, axes, safe-frame overlays, and inspection controls are absent from captured pixels;
    - repeated rendering of the same frame produces the same authored camera state.
+   - any required blank opening is actually blank, and a required static hold has identical authored scene state from its first frame through the final frame. Pixel hashes may support the hold check, but still inspect both endpoints visually.
 5. If any sampled frame is questionable, inspect additional neighboring frames, fix the project, recapture, and visually inspect again. Do not report visual validation as passed until this loop succeeds.
 6. If an upload-ready MP4 exists, run:
 
