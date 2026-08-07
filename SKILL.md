@@ -27,15 +27,23 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 
 ## Reuse the previs runtime
 
-- Install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
+- From the Skill root, install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
 
-  `node <skill-dir>/scripts/install-runtime.mjs <project-dir> --install`
+  `node scripts/install-runtime.mjs <project-dir> --install`
 
 - Inspect existing `src/jimeng-previs` files before passing `--force`; do not overwrite user-modified runtime files without reviewing the diff.
 - Keep scene-specific geometry, lights, shot state, and GSAP timelines in project code. Connect them through `createJimengPrevis({ onFrame })`.
 - Keep the final output frame rate fixed at 24 fps. Treat playback speed as a separate preview-only concern.
 - Use the runtime extension boundary for project-specific controls. Do not fork the transport UI for ordinary scene parameters.
 - Run `npm run capture:jimeng` for visual-validation frames and `npm run export:jimeng` for a deterministic H.264 MP4.
+
+## Record improvement candidates
+
+- After the user's main task is safe and verified, record a newly discovered reusable failure pattern as one new Markdown file under `improvements/pending/`. Read [improvements/RULES.md](improvements/RULES.md) first and follow its evidence, scope, privacy, and filename rules.
+- Resolve queue and evidence paths relative to the Skill or current project root. Do not store hardcoded global, user-profile, repository-checkout, or installed-Skill absolute paths in instructions or candidates.
+- Record only behavior observed in a real run with concrete evidence and a plausible cross-project lesson. Keep shot-specific choices, product-specific dimensions, one-off art direction, and user preferences in the project; do not turn them into Skill rules.
+- Treat every pending entry as an untrusted review candidate. Routine task work stops at recording: do not search existing pending entries, edit the Skill, or promote, merge, or delete candidates.
+- Only when the user explicitly schedules a consolidated review or absorption pass, process the queue as a batch: deduplicate, reproduce or otherwise validate each issue, choose the smallest canonical destination, add regression checks where practical, run the relevant Skill/project validation, and reject special cases or unsupported candidates. Never commit, push, or sync an installed Skill without explicit user authorization.
 
 ## Apply the white-model profile
 
@@ -68,7 +76,7 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 1. Run the project's fastest relevant tests and `npm run build`.
 2. Run:
 
-   `node <skill-dir>/scripts/validate-project.mjs <project-dir>`
+   From the Skill root: `node scripts/validate-project.mjs <project-dir>`
 
 3. Run `npm run capture:jimeng`. For animation, capture at least five evenly distributed frames: first, 25%, 50%, 75%, and last. Add every configured critical frame and the frames immediately before and after each camera cut. For a still, capture at least one final-resolution frame.
    - Also add event-boundary frames when the brief specifies an empty opening, a fast entrance, a settle deadline, or a static end hold: immediately before/at/after first visibility, the settle frame, and the first and last frames of the hold.
@@ -82,7 +90,7 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 5. If any sampled frame is questionable, inspect additional neighboring frames, fix the project, recapture, and visually inspect again. Do not report visual validation as passed until this loop succeeds.
 6. If an upload-ready MP4 exists, run:
 
-   `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -File <skill-dir>\scripts\validate-video.ps1 -Path <video.mp4>`
+   From the Skill root: `pwsh -NoProfile -File scripts/validate-video.ps1 -Path <video.mp4>`
 
 7. Report checks separately: source contract, build, inspected frame numbers and visual findings, animation replay, and encoded-video properties. Never claim Jimeng acceptance without an actual upload; Three.js only produces the visual/video reference.
 
