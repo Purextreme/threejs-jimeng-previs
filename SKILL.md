@@ -12,8 +12,21 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 1. Inspect the project, current Git status, package scripts, Three.js version, render path, camera ownership, animation clock, GLB loading, and capture/export path before editing.
 2. Read [references/jimeng-blender-evidence.md](references/jimeng-blender-evidence.md) when the user asks why a rule exists or when updating the profile from a newer uploader.
 3. Read [references/threejs-implementation.md](references/threejs-implementation.md) before implementing or reviewing a project.
-4. Create `jimeng-previs.config.json` at the project root from the reference example and keep it synchronized with actual behavior.
-5. Preserve existing user work. Make only the changes required for the preview profile.
+4. Read [references/runtime-api.md](references/runtime-api.md) before adding or updating the shared playback UI, frame clock, visual capture, or MP4 export path.
+5. Create `jimeng-previs.config.json` at the project root from the bundled example and keep it synchronized with actual behavior.
+6. Preserve existing user work. Make only the changes required for the preview profile.
+
+## Reuse the previs runtime
+
+- Install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
+
+  `node <skill-dir>/scripts/install-runtime.mjs <project-dir> --install`
+
+- Inspect existing `src/jimeng-previs` files before passing `--force`; do not overwrite user-modified runtime files without reviewing the diff.
+- Keep scene-specific geometry, lights, shot state, and GSAP timelines in project code. Connect them through `createJimengPrevis({ onFrame })`.
+- Keep the final output frame rate fixed at 24 fps. Treat playback speed as a separate preview-only concern.
+- Use the runtime extension boundary for project-specific controls. Do not fork the transport UI for ordinary scene parameters.
+- Run `npm run capture:jimeng` for visual-validation frames and `npm run export:jimeng` for a deterministic H.264 MP4.
 
 ## Apply the white-model profile
 
@@ -48,12 +61,19 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 
    `node <skill-dir>/scripts/validate-project.mjs <project-dir>`
 
-3. Inspect the preview in a real browser at the first, middle, and last frames. Confirm neutral white materials, readable form, no texture leakage, no clipping, no camera jump, and deterministic replay.
-4. If an upload-ready MP4 exists, run:
+3. Run `npm run capture:jimeng`. For animation, capture at least five evenly distributed frames: first, 25%, 50%, 75%, and last. Add every configured critical frame and the frames immediately before and after each camera cut. For a still, capture at least one final-resolution frame.
+4. Actually open and visually inspect the captured PNG files. A successful build, browser load, screenshot command, pixel heuristic, or diagnostics JSON never substitutes for visual inspection. Confirm:
+   - every object remains a neutral white model with no texture or colored-material leakage;
+   - silhouette, scale, depth, contact shadows, and important product features remain readable;
+   - the subject remains framed with no clipping, camera penetration, sudden flip, jump, or unintended occlusion;
+   - debug UI, grid, axes, safe-frame overlays, and inspection controls are absent from captured pixels;
+   - repeated rendering of the same frame produces the same authored camera state.
+5. If any sampled frame is questionable, inspect additional neighboring frames, fix the project, recapture, and visually inspect again. Do not report visual validation as passed until this loop succeeds.
+6. If an upload-ready MP4 exists, run:
 
    `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoProfile -File <skill-dir>\scripts\validate-video.ps1 -Path <video.mp4>`
 
-5. Report checks separately: source contract, build, browser appearance, animation replay, and encoded-video properties. Never claim Jimeng acceptance without an actual upload; Three.js only produces the visual/video reference.
+7. Report checks separately: source contract, build, inspected frame numbers and visual findings, animation replay, and encoded-video properties. Never claim Jimeng acceptance without an actual upload; Three.js only produces the visual/video reference.
 
 ## Handle intentional exceptions
 

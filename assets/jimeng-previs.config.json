@@ -1,0 +1,28 @@
+{
+  "profile": "jimeng-white-model-v1",
+  "runtime": { "version": "1.0.0", "path": "src/jimeng-previs" },
+  "fps": 24,
+  "frameStart": 1,
+  "frameEnd": 120,
+  "resolution": { "width": 1280, "height": 720, "origin": false },
+  "whiteModel": {
+    "color": "#c7c7c7",
+    "roughness": 0.5,
+    "metalness": 0,
+    "opacity": 1,
+    "transparent": false,
+    "textures": false,
+    "emissive": "#000000"
+  },
+  "lighting": { "mode": "studio-neutral" },
+  "camera": { "name": "PrevisCamera", "controlsDuringCapture": false },
+  "output": {
+    "container": "mp4",
+    "codec": "h264",
+    "pixelFormat": "yuv420p",
+    "maxBytes": 209715200,
+    "path": "outputs/jimeng-previs.mp4"
+  },
+  "validation": { "minimumAnimationSamples": 5 },
+  "sourceFiles": ["src/main.js", "src/jimeng-previs/white-model.js"]
+}

@@ -45,12 +45,31 @@ const config = readJson(path.join(projectDir, 'jimeng-previs.config.json'), 'jim
 if (packageJson) {
   const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies }
   if (!dependencies.three) fail('package.json must declare project-level dependency "three"')
+  if (!dependencies['playwright-core'] && !dependencies.playwright) {
+    fail('package.json must declare project-level dev dependency "playwright-core" or "playwright"')
+  }
   if (!packageJson.scripts?.build) fail('package.json must define scripts.build')
+  if (!packageJson.scripts?.['capture:jimeng']) fail('package.json must define scripts.capture:jimeng')
+  if (!packageJson.scripts?.['export:jimeng']) fail('package.json must define scripts.export:jimeng')
 }
 
 if (config) {
   expectEqual(config.profile, 'jimeng-white-model-v1', 'profile')
   expectNumber(config.fps, 24, 'fps')
+
+  expectEqual(config.runtime?.version, '1.0.0', 'runtime.version')
+  if (typeof config.runtime?.path !== 'string' || !config.runtime.path.trim()) {
+    fail('runtime.path must be a non-empty project-relative path')
+  } else {
+    const runtimeDir = path.resolve(projectDir, config.runtime.path)
+    if (!runtimeDir.startsWith(projectDir + path.sep)) {
+      fail(`runtime.path escapes the project directory: ${config.runtime.path}`)
+    } else {
+      for (const filename of ['index.js', 'previs-runtime.js', 'previs-runtime.css', 'white-model.js']) {
+        if (!fs.existsSync(path.join(runtimeDir, filename))) fail(`runtime file not found: ${path.join(config.runtime.path, filename)}`)
+      }
+    }
+  }
 
   if (!Number.isInteger(config.frameStart) || !Number.isInteger(config.frameEnd)) {
     fail('frameStart and frameEnd must be integers')
@@ -92,6 +111,21 @@ if (config) {
   if (!Number.isInteger(config.output?.maxBytes) || config.output.maxBytes > 209715200 || config.output.maxBytes <= 0) {
     fail(`output.maxBytes must be an integer from 1 through 209715200, got ${JSON.stringify(config.output?.maxBytes)}`)
   }
+  if (typeof config.output?.path !== 'string' || !config.output.path.toLowerCase().endsWith('.mp4')) {
+    fail('output.path must be a project-relative .mp4 path')
+  }
+
+  const minimumSamples = config.validation?.minimumAnimationSamples
+  if (!Number.isInteger(minimumSamples) || minimumSamples < 5) {
+    fail(`validation.minimumAnimationSamples must be an integer of at least 5, got ${JSON.stringify(minimumSamples)}`)
+  }
+  if (config.validation?.criticalFrames != null) {
+    if (!Array.isArray(config.validation.criticalFrames) || config.validation.criticalFrames.some((frame) => !Number.isInteger(frame))) {
+      fail('validation.criticalFrames must be an array of integer frames')
+    } else if (config.validation.criticalFrames.some((frame) => frame < config.frameStart || frame > config.frameEnd)) {
+      fail('validation.criticalFrames entries must stay inside the inclusive frame range')
+    }
+  }
 
   if (!Array.isArray(config.sourceFiles) || config.sourceFiles.length === 0) {
     fail('sourceFiles must list at least one implementation file')
@@ -114,6 +148,7 @@ if (config) {
     if (source && !/PerspectiveCamera/.test(source)) fail('sourceFiles must create or reference PerspectiveCamera')
     if (source && !/MeshStandardMaterial/.test(source)) fail('sourceFiles must create or reference MeshStandardMaterial')
     if (source && !/(0x|#)c7c7c7/i.test(source)) fail('sourceFiles must contain the white-model color #c7c7c7 / 0xc7c7c7')
+    if (source && !/createJimengPrevis/.test(source)) fail('sourceFiles must connect the shared createJimengPrevis runtime')
     if (source && /Mesh(Basic|Phong|Lambert|Toon|Physical|Matcap|Normal|Depth)Material/.test(source)) {
       warn('alternate mesh material constructors found; visually verify that every final render mesh is overridden')
     }
