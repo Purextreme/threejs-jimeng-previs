@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -19,6 +20,18 @@ const configTarget = path.join(projectDir, 'jimeng-previs.config.json')
 const defaultConfig = JSON.parse(fs.readFileSync(path.join(skillDir, 'assets', 'jimeng-previs.config.json'), 'utf8'))
 const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
 packageJson.scripts ??= {}
+const projectRequire = createRequire(packagePath)
+const declaredDependencies = { ...packageJson.dependencies, ...packageJson.devDependencies }
+const declaredPlaywright = Boolean(declaredDependencies['playwright-core'] || declaredDependencies.playwright)
+const resolvablePlaywright = ['playwright-core', 'playwright'].some((name) => {
+  try {
+    projectRequire.resolve(name)
+    return true
+  } catch {
+    return false
+  }
+})
+const playwrightReady = declaredPlaywright && resolvablePlaywright
 const managedScripts = {
   'capture:jimeng': 'node scripts/jimeng-previs/capture-frames.mjs',
   'export:jimeng': 'node scripts/jimeng-previs/export-video.mjs',
@@ -69,7 +82,7 @@ for (const [name, command] of Object.entries(managedScripts)) {
 fs.writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8')
 fs.writeFileSync(configTarget, `${JSON.stringify(projectConfig, null, 2)}\n`, 'utf8')
 
-if (args.install) {
+if (args.install && !playwrightReady) {
   const npmCliCandidates = [
     process.env.npm_execpath,
     path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
@@ -81,4 +94,6 @@ if (args.install) {
 }
 
 console.log(`PASS: installed Jimeng previs runtime in ${runtimeTarget}`)
-if (!args.install) console.log('NEXT: run npm install -D playwright-core')
+if (args.install && playwrightReady) console.log('SKIP: project-level Playwright dependency is already available')
+if (!args.install && playwrightReady) console.log('READY: project-level Playwright dependency is already available')
+if (!args.install && !playwrightReady) console.log('NEXT: rerun with --install to add playwright-core')

@@ -29,8 +29,9 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 
 - From the Skill root, install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
 
-  `node scripts/install-runtime.mjs <project-dir> --install`
+  `node scripts/install-runtime.mjs <project-dir>`
 
+- Let the installer reuse an existing project-level `playwright-core` or `playwright` dependency. Only rerun with `--install` when it reports that the capture dependency is missing; the flag must not trigger npm when the dependency is already declared and resolvable.
 - Inspect existing `src/jimeng-previs` files before passing `--force`; do not overwrite user-modified runtime files without reviewing the diff.
 - Keep scene-specific geometry, lights, shot state, and GSAP timelines in project code. Connect them through `createJimengPrevis({ onFrame })`.
 - Keep the final output frame rate fixed at 24 fps. Treat playback speed as a separate preview-only concern.
