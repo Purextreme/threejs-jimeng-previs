@@ -39,6 +39,37 @@ Create `jimeng-previs.config.json` at the project root:
 
 `frameStart` and `frameEnd` are inclusive. A 1-120 range contains 120 frames.
 
+## Two-stage scene authoring
+
+Treat a previs as two separately reviewable stages: scene/model construction, then camera/object animation.
+
+### Model-source gate
+
+Start modeling only when at least one of these is available:
+
+- reference images or video that show the required object or scene;
+- a GLB/glTF or another asset supported by the project's loaders;
+- a sufficiently explicit text brief for an ordinary, visually unambiguous object.
+
+Do not infer a product-specific or unfamiliar design from its name alone. Ask for a usable reference when silhouette, proportions, component layout, attachment, or hidden depth would otherwise be guesswork. When only one view is available, state which unseen features are approximate.
+
+Before building, record a lightweight model contract in project notes or code comments: component list, relative proportions or supplied dimensions, intended pose, contact/support relationships, local origin, up/front convention, and any independently moving components with their pivot locations. Keep the contract proportional and structural; white-model previs does not need a material, texture, or micro-detail inventory.
+
+Build in two passes when the subject is more than a trivial primitive assembly:
+
+1. Block out the dominant masses and silhouette with simple primitives or the supplied asset.
+2. Add only the structural features needed for recognition, attachment, occlusion, or animation.
+
+Render the blockout from the intended final camera and, when depth or attachment is unclear, one diagnostic three-quarter or orthographic view. Compare those captures to the reference and fix silhouette, scale, spacing, attachment, and ground contact before animation work begins.
+
+### Animation-ready hierarchy
+
+Place approved geometry below a stable model root and animate a separate shot-motion root. Add named child groups only where components actually move independently, and place their pivots deliberately. This keeps shot translation, rotation, and scale from corrupting model-local proportions or component offsets. Apply only the axes and degrees of freedom required by the current brief; do not turn a shot-specific constraint into a reusable default.
+
+For imported assets, finish loading and normalization before enabling playback or capture. Prefer `GLTFLoader.loadAsync()` or an explicit `LoadingManager`, surface loader errors, and expose a ready promise/state that capture must await. Compute bounds with `Box3` after world matrices are current; reject empty or non-finite bounds, preserve aspect ratio with uniform scaling, and avoid automatic recentering when it would invalidate authored pivots, skinning, animation, or scene placement. Fit the review camera after the final bounds are known, not continuously during authored animation.
+
+If a supplied glTF/GLB fails to load or has suspect structure, use the official Khronos glTF Validator when available. `gltf-transform inspect` is an optional diagnostic for scene contents, bounds, draw calls, and asset weight; do not add it as a required dependency or optimize/rewrite a user asset without a demonstrated need.
+
 ## Install the reusable runtime
 
 Run:

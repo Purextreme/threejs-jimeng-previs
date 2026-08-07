@@ -16,6 +16,15 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 5. Create `jimeng-previs.config.json` at the project root from the bundled example and keep it synchronized with actual behavior.
 6. Preserve existing user work. Make only the changes required for the preview profile.
 
+## Work in two approval stages
+
+1. Build and review the scene/model blockout before authoring camera or object animation.
+2. Before modeling, require at least one usable source: reference images or video, a GLB/glTF or other asset the current Three.js project can load, or an explicit brief for an unambiguous common object such as a laptop, cup, or mouse.
+3. If the subject is unfamiliar, product-specific, branded, or visually ambiguous, ask for a reference instead of inventing its design. A single view may support an approximate blockout, but label unseen depth and hidden sides as inferred.
+4. Establish the model contract from the source: main dimensions or proportions, component breakdown, intended pose, ground/contact relationship, local origin, and the pivots or independently moving parts needed later.
+5. Capture and visually inspect the neutral blockout from the intended final view and any additional view needed to judge depth or attachment. Resolve model silhouette, scale, and component errors before animation. Do not treat a technically valid render as model approval.
+6. Begin the animation stage only after the user accepts the blockout, unless the user explicitly asks to complete both stages in one pass. Keep model-local transforms separate from shot-level motion so animation changes do not damage the approved proportions or pivots.
+
 ## Reuse the previs runtime
 
 - Install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
