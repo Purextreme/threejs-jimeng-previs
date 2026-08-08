@@ -76,6 +76,8 @@ Treat camera technique, GSAP use, helper use, primitive composition, object hier
 ## Make camera motion deterministic
 
 - Render through one explicit `PerspectiveCamera` unless the requested shot requires orthographic projection.
+- Prefer independently authored Camera Position + Target Position + optional Roll for ordinary camera motion. Use Orbit, Dolly, Crane, and Truck helpers when they naturally describe the shot.
+- Prefer target-based orientation over authored Euler rotation when the camera must maintain or transition visual attention. Keep direct camera rotation, quaternion, matrix, and custom math available as escape hatches, and never distort a requested shot to fit the Camera Rig.
 - Separate inspection controls from the shot camera. Disable `OrbitControls` during playback and capture so controls cannot mutate the authored path.
 - Advance animation from frame time at 24 fps. Derive time as `(frame - frameStart) / 24`; do not make captured motion depend on variable browser delta time.
 - Keep the subject in frame and avoid unintended near/far clipping throughout the whole range.
@@ -99,6 +101,7 @@ Treat camera technique, GSAP use, helper use, primitive composition, object hier
 3. Run `npm run capture:jimeng`. For animation, capture at least five evenly distributed frames: first, 25%, 50%, 75%, and last. Add every configured critical frame and the frames immediately before and after each camera cut. For a still, capture at least one final-resolution frame.
    - Also add event-boundary frames when the brief specifies an empty opening, a fast entrance, a settle deadline, or a static end hold: immediately before/at/after first visibility, the settle frame, and the first and last frames of the hold.
 4. Actually open and visually inspect the captured PNG files. A successful build, browser load, screenshot command, pixel heuristic, or diagnostics JSON never substitutes for visual inspection. Confirm:
+   - If a quick image preview appears blank, tiny, unexpanded, or otherwise inconsistent with the capture diagnostics, do not classify the render from that preview alone. Reopen the same PNG at original resolution, then cross-check its dimensions, non-zero file size, capture diagnostics, and—when two frames are expected to match—file hash. If the original-resolution view remains ambiguous, recapture and inspect again. Treat hashes and metadata only as supporting evidence; at least one usable visual rendering of every required frame is still mandatory.
    - every object remains a neutral white model with no texture or colored-material leakage;
    - silhouette, scale, depth, contact shadows, and important product features remain readable;
    - the subject remains framed with no clipping, camera penetration, sudden flip, jump, or unintended occlusion;

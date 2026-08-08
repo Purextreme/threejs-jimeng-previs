@@ -87,11 +87,43 @@ These modules are optional conveniences around repeated previs work. They expose
 ### Camera rig
 
 ```js
+const rig = createCameraRig({
+  camera,
+  position: [8, 3, 6],
+  target: [0, 1, 0],
+  roll: 0,
+})
+
+rig.position.set(6, 2.5, 5)
+rig.targetPosition.set(0.8, 1.2, 0)
+rig.update()
+```
+
+Prefer Position + Target + optional Roll for ordinary authored camera motion. `rig.position`, `rig.targetPosition`, and `rig.targetOffset` are public `Vector3` instances; `rig.roll` is a public numeric property. `update()` copies the authored position to the camera, resolves the target, calls `camera.lookAt()`, then applies Roll. `rig.camera` always exposes the original camera, and direct rotation, quaternion, matrix, or custom camera math remain valid escape hatches.
+
+Passing an authored `position` selects `direct` mode. A rig created without `position` starts in `orbit` mode to support orbit-style initialization. Check `rig.mode`, switch explicitly with `useDirectPosition()` or `useOrbit()`, and use `setPosition()` when setting a new direct position. Orbit setters and the Shot orbit/dolly helpers select orbit mode; call `useDirectPosition()` before directly authoring `rig.position` again.
+
+Use an `Object3D` target to follow a moving product. Its world position is resolved every frame; animate `targetOffset` when the point of attention must move relative to that object:
+
+```js
+const rig = createCameraRig({
+  camera,
+  position: [8, 3, 6],
+  target: product.motionRoot,
+  targetOffset: [0, 0.3, 0],
+})
+```
+
+Passing a `Vector3`, array, or vector-like value copies it into direct `targetPosition`. Calling `setTarget(Object3D)` selects object tracking; calling `setTarget(Vector3 | Array)` returns to direct target control. `getTargetPosition()` returns the resolved world-space target including offset.
+
+Orbit, Dolly, Crane, and Truck remain convenience controls that calculate `rig.position` before the same Target + LookAt + Roll pipeline:
+
+```js
 const rig = createCameraRig({ camera, target: product.motionRoot, distance: 8, height: 2 })
 rig.setOrbitAngle(0.5).setDistance(7).setHeight(2.5).update()
 ```
 
-Use `setTarget`, `setTargetOffset`, `setOrbitAngle`/`orbit`, `setDistance`/`dolly`, `setHeight`/`crane`, `setTruck`/`truck`, and `setRoll`. `rig.camera` is the original camera and `rig.state` is intentionally public for GSAP or custom math.
+Use `setOrbitAngle`/`orbit`, `setDistance`/`dolly`, `setHeight`/`crane`, `setTruck`/`truck`, and `setRoll`. `rig.state` remains public for GSAP or custom math. Keep the camera at the scene root or below identity/uniformly scaled parents: Three.js `lookAt()` does not support non-uniformly scaled parents.
 
 ### Shot
 
@@ -100,8 +132,15 @@ Use `setTarget`, `setTargetOffset`, `setOrbitAngle`/`orbit`, `setDistance`/`doll
 ```js
 const shot = createShot({ gsap, frameStart: 1, frameEnd: 120 })
 shot.move(product.motionRoot, { from: [0, 0, 0], to: [2, 0, 0], endFrame: 96 })
-shot.orbit(rig, { from: -0.5, to: 0.8, endFrame: 96 })
-shot.dolly(rig, { from: 9, to: 6, endFrame: 96 })
+shot.to(rig.position, { x: 3, y: 2, z: 5 }, {
+  from: { x: 8, y: 3, z: 8 },
+  endFrame: 60,
+})
+shot.to(rig.targetPosition, { x: 1.2, y: 0.8, z: 0 }, {
+  from: { x: 0, y: 1, z: 0 },
+  startFrame: 30,
+  endFrame: 80,
+})
 
 onFrame({ frame }) {
   shot.seek(frame)
@@ -109,7 +148,7 @@ onFrame({ frame }) {
 }
 ```
 
-Pass the project's GSAP instance or an existing paused `timeline`; the runtime does not make GSAP a hidden dependency. Use `move`, `rotate`, `orbit`, and `dolly` for the most repeated operations. Use `shot.to()` for any other simple numeric target such as `rig.state.height` or `rig.state.truck`, `shot.timeline` for direct GSAP access, or skip the helper entirely for custom motion.
+Pass the project's GSAP instance or an existing paused `timeline`; the runtime does not make GSAP a hidden dependency. Use `move`, `rotate`, `orbit`, and `dolly` for the most repeated operations. Use `shot.to()` for camera position, target position, target offset, Roll, or any other numeric target. Use `shot.timeline` for direct GSAP access, or skip the helper entirely for custom motion.
 
 Omit `from` to continue from the state produced by an earlier timeline segment. Provide `from` only when the segment must begin from an explicit authored value.
 

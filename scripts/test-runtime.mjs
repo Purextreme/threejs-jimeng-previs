@@ -34,6 +34,12 @@ function snapshotCamera(camera) {
   ].map((value) => Number(value.toFixed(9)))
 }
 
+function assertCameraLooksAt(camera, target, message) {
+  const direction = camera.getWorldDirection(new THREE.Vector3())
+  const expected = target.clone().sub(camera.getWorldPosition(new THREE.Vector3())).normalize()
+  close(direction.dot(expected), 1, message)
+}
+
 function pad(buffer, fill = 0) {
   const padding = (4 - (buffer.length % 4)) % 4
   return padding === 0 ? buffer : Buffer.concat([buffer, Buffer.alloc(padding, fill)])
@@ -77,12 +83,58 @@ function createTriangleGlb(positions) {
 }
 
 async function testCameraRig() {
+  const directCamera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100)
+  const directRig = createCameraRig({
+    camera: directCamera,
+    position: [8, 3, 6],
+    target: new THREE.Vector3(0, 1, 0),
+  })
+
+  assert.equal(directRig.mode, 'direct')
+  directRig.update()
+  assert.deepEqual(directCamera.position.toArray(), [8, 3, 6], 'Direct position must remain authoritative')
+  assertCameraLooksAt(directCamera, directRig.getTargetPosition(), 'Direct camera must look at its static target')
+
+  directRig.position.set(6, 4, 5)
+  directRig.targetPosition.set(1, 1.5, -1)
+  directRig.update()
+  assert.deepEqual(directCamera.position.toArray(), [6, 4, 5], 'Direct position edits must not be overwritten')
+  assertCameraLooksAt(directCamera, directRig.getTargetPosition(), 'Direct target edits must update orientation')
+
+  directRig.setRoll(0.12).update()
+  const rolled = snapshotCamera(directCamera)
+  directRig.update()
+  assert.deepEqual(snapshotCamera(directCamera), rolled, 'Repeated lookAt plus roll updates must not accumulate')
+  assertCameraLooksAt(directCamera, directRig.getTargetPosition(), 'Roll must preserve the look direction')
+
+  const followedTarget = new THREE.Object3D()
+  followedTarget.position.set(2, 1, 0)
+  directRig.setTarget(followedTarget).setTargetOffset([0, 0.3, 0]).update()
+  assert.deepEqual(directRig.getTargetPosition().toArray(), [2, 1.3, 0])
+  assertCameraLooksAt(directCamera, directRig.getTargetPosition(), 'Object target plus offset must resolve in world space')
+
+  followedTarget.position.set(3, 2, -1)
+  directRig.targetOffset.y = 0.5
+  directRig.update()
+  assert.deepEqual(directCamera.position.toArray(), [6, 4, 5], 'Moving targets must not overwrite direct camera position')
+  assert.deepEqual(directRig.getTargetPosition().toArray(), [3, 2.5, -1])
+  assertCameraLooksAt(directCamera, directRig.getTargetPosition(), 'Direct camera must track a moving Object3D target')
+
+  directRig.setDistance(7)
+  assert.equal(directRig.mode, 'orbit', 'Orbit setters must select orbit mode')
+  directRig.update()
+  assert.notDeepEqual(directCamera.position.toArray(), [6, 4, 5], 'Orbit mode must compute camera position')
+  directRig.useDirectPosition([4, 3, 7]).update()
+  assert.equal(directRig.mode, 'direct')
+  assert.deepEqual(directCamera.position.toArray(), [4, 3, 7], 'Direct mode must be explicitly restorable')
+
   const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100)
   const target = new THREE.Object3D()
   target.position.set(1, 2, 3)
   target.updateMatrixWorld(true)
   const rig = createCameraRig({ camera, target, orbitAngle: -0.5, distance: 8, height: 2, truck: 0.4 })
 
+  assert.equal(rig.mode, 'orbit', 'A rig without an authored position must preserve orbit initialization')
   rig.update()
   const first = snapshotCamera(camera)
   rig.update()
@@ -97,10 +149,84 @@ async function testCameraRig() {
   target.updateMatrixWorld(true)
   rig.update()
   close(camera.position.x - beforeMove.x, 3, 'Camera must follow a moving target')
+
+  assert.throws(
+    () => createCameraRig({ camera: new THREE.PerspectiveCamera(), mode: 'automatic' }),
+    /mode must be 'direct' or 'orbit'/,
+  )
 }
 
 async function testShot() {
   if (!gsap) return
+
+  const directCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+  const directRig = createCameraRig({ camera: directCamera, position: [8, 3, 8], target: [0, 1, 0] })
+  const directShot = createShot({ gsap, frameStart: 1, frameEnd: 120 })
+  directShot.to(directRig.position, { x: 3, y: 2, z: 5 }, {
+    from: { x: 8, y: 3, z: 8 }, startFrame: 1, endFrame: 60, ease: 'none',
+  })
+  directShot.to(directRig.targetPosition, { x: 1.2, y: 0.8, z: 0 }, {
+    from: { x: 0, y: 1, z: 0 }, startFrame: 30, endFrame: 80, ease: 'none',
+  })
+  directShot.to(directRig, { roll: 0.08 }, {
+    from: { roll: 0 }, startFrame: 70, endFrame: 100, ease: 'none',
+  })
+
+  for (const frame of [1, 40, 60, 80, 100, 120]) {
+    directShot.seek(frame)
+    directRig.update()
+    assert.equal(directRig.mode, 'direct')
+    assertCameraLooksAt(directCamera, directRig.getTargetPosition(), `Frame ${frame} must preserve direct target attention`)
+  }
+
+  directShot.seek(40)
+  directRig.update()
+  const directFrame40 = directRig.getState()
+  directShot.seek(1)
+  directRig.update()
+  directShot.seek(40)
+  directRig.update()
+  assert.deepEqual(directRig.getState(), directFrame40, 'Independent position and target paths must replay exactly')
+
+  directShot.seek(100)
+  directRig.update()
+  const directHold = directRig.getState()
+  directShot.seek(120)
+  directRig.update()
+  assert.deepEqual(directRig.getState(), directHold, 'Direct camera and target must hold after their last tweens')
+
+  const helperRig = createCameraRig({ camera: new THREE.PerspectiveCamera(), position: [6, 2, 8], target: [0, 1, 0] })
+  const helperShot = createShot({ gsap, frameStart: 1, frameEnd: 60 })
+  helperShot.orbit(helperRig, { from: 0, to: 0.5, startFrame: 1, endFrame: 60, ease: 'none' })
+  helperShot.dolly(helperRig, { from: 10, to: 7, startFrame: 1, endFrame: 60, ease: 'none' })
+  assert.equal(helperRig.mode, 'orbit', 'Shot orbit helpers must explicitly select orbit mode')
+  helperShot.seek(60)
+  helperRig.update()
+  close(helperRig.state.orbitAngle, 0.5, 'Shot orbit helper compatibility')
+  close(helperRig.state.distance, 7, 'Shot dolly helper compatibility')
+
+  const product = new THREE.Object3D()
+  product.position.set(-2, 1, 0)
+  const trackedCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+  const trackedRig = createCameraRig({ camera: trackedCamera, position: [8, 3, 7], target: product })
+  const trackedShot = createShot({ gsap, frameStart: 1, frameEnd: 60 })
+  trackedShot.move(product, { from: [-2, 1, 0], to: [2, 1, 0], startFrame: 1, endFrame: 60, ease: 'none' })
+  trackedShot.to(trackedRig.position, { x: 5, y: 2.5, z: 5 }, {
+    from: { x: 8, y: 3, z: 7 }, startFrame: 1, endFrame: 60, ease: 'none',
+  })
+  trackedShot.to(trackedRig.targetOffset, { x: 0, y: 0.3, z: 0 }, {
+    from: { x: 0, y: 0, z: 0 }, startFrame: 30, endFrame: 60, ease: 'none',
+  })
+
+  for (const frame of [1, 30, 45, 60]) {
+    trackedShot.seek(frame)
+    trackedRig.update()
+    assertCameraLooksAt(trackedCamera, trackedRig.getTargetPosition(), `Frame ${frame} must track the moving product`)
+  }
+  trackedShot.seek(60)
+  trackedRig.update()
+  assert.deepEqual(trackedRig.getTargetPosition().toArray(), [2, 1.3, 0], 'Animated offset must combine with Object3D tracking')
+
   const object = new THREE.Object3D()
   const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
   const rig = createCameraRig({ camera, distance: 10, height: 2 })

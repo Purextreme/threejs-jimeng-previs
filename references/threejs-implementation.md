@@ -9,7 +9,7 @@ Create `jimeng-previs.config.json` at the project root:
 ```json
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.1.1", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.2.0", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -107,20 +107,29 @@ scene.add(fill)
 
 ## Deterministic GSAP camera
 
-Prefer `createCameraRig` and `createShot` for ordinary orbit, dolly, truck, crane, move, and rotate blocking. Direct GSAP and native math remain supported:
+Prefer independently authored Camera Position + Target Position + optional Roll for ordinary camera blocking. Use Orbit, Dolly, Truck, and Crane when those controls naturally describe the shot; they feed the same position-and-target pipeline. Direct GSAP and native math remain supported:
 
 ```js
-const FPS = 24
-const shot = gsap.timeline({ paused: true })
-shot.to(camera.position, { x: 3, y: 2, z: 5, duration: 2, ease: 'power2.inOut' })
+const rig = createCameraRig({ camera, position: [8, 3, 8], target: [0, 1, 0] })
+const shot = createShot({ gsap, frameStart: 1, frameEnd: 120 })
+shot.to(rig.position, { x: 3, y: 2, z: 5 }, {
+  from: { x: 8, y: 3, z: 8 },
+  startFrame: 1,
+  endFrame: 60,
+})
+shot.to(rig.targetPosition, { x: 1.2, y: 0.8, z: 0 }, {
+  from: { x: 0, y: 1, z: 0 },
+  startFrame: 30,
+  endFrame: 80,
+})
 
-function updateShot({ time }) {
-  shot.time(time, false)
-  camera.lookAt(target)
+function updateShot({ frame }) {
+  shot.seek(frame)
+  rig.update()
 }
 ```
 
-Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. Do not call `shot.play()` for deterministic capture. Seek the same timeline from each requested frame.
+Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. For an `Object3D` target, animate `rig.targetOffset` to move attention relative to the tracked object. Prefer target-based orientation over authored Euler rotation when visual attention must be maintained or transitioned. Do not call `shot.play()` for deterministic capture; seek the same timeline from each requested frame. Use direct `camera.rotation`, quaternion, matrix, or custom camera math whenever the Rig would distort the requested shot.
 
 ## Visual evidence
 

@@ -54,12 +54,14 @@ export function createShot(options = {}) {
       return add(object?.rotation, vectorVars(settings.to), { ...settings, from: vectorVars(settings.from) })
     },
     orbit(rig, settings = {}) {
+      rig?.useOrbit?.()
       return add(rig?.state, { orbitAngle: settings.to }, {
         ...settings,
         from: settings.from === undefined ? undefined : { orbitAngle: settings.from },
       })
     },
     dolly(rig, settings = {}) {
+      rig?.useOrbit?.()
       return add(rig?.state, { distance: settings.to }, {
         ...settings,
         from: settings.from === undefined ? undefined : { distance: settings.from },
