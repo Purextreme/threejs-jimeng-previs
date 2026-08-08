@@ -35,6 +35,7 @@ const playwrightReady = declaredPlaywright && resolvablePlaywright
 const managedScripts = {
   'capture:jimeng': 'node scripts/jimeng-previs/capture-frames.mjs',
   'export:jimeng': 'node scripts/jimeng-previs/export-video.mjs',
+  'test:jimeng-runtime': 'node scripts/jimeng-previs/test-runtime.mjs',
 }
 
 if (fs.existsSync(runtimeTarget) && !args.force) {
@@ -72,7 +73,7 @@ for (const entry of fs.readdirSync(runtimeSource, { withFileTypes: true })) {
   if (!entry.isFile()) continue
   fs.copyFileSync(path.join(runtimeSource, entry.name), path.join(runtimeTarget, entry.name))
 }
-for (const filename of ['capture-frames.mjs', 'export-video.mjs', 'runtime-tools.mjs']) {
+for (const filename of ['capture-frames.mjs', 'export-video.mjs', 'runtime-tools.mjs', 'test-runtime.mjs']) {
   fs.copyFileSync(path.join(skillDir, 'scripts', filename), path.join(toolsTarget, filename))
 }
 

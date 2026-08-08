@@ -13,6 +13,7 @@ This is evidence from the supplied Blender add-on, not a claim that Jimeng direc
 - `viewport_render.py` lines 90-130: image/procedural textures, custom shader nodes, non-default base color, metallic, roughness, alpha, emission, or diffuse color make the scene a material preview.
 - `viewport_render.py` lines 148-153: the entire scene switches to material preview when any visible rendered mesh has such a material.
 - `viewport_render.py` lines 367-380: export uses `BLENDER_WORKBENCH`; white model uses `SINGLE` color `(0.78, 0.78, 0.78)`, `STUDIO` light, and X-ray off.
+- The add-on does not set `background_type`, `background_color`, World color, or film transparency anywhere. Background color is therefore inherited from Blender state rather than required by the Jimeng exporter.
 
 The Three.js profile uses `#c7c7c7`, the nearest 8-bit representation of `0.78`, as its deterministic white-model color.
 
@@ -28,4 +29,4 @@ The Three.js profile uses `#c7c7c7`, the nearest 8-bit representation of `0.78`,
 Treat these as two layers:
 
 1. Source-backed constraints: neutral single-color model, Studio-style lighting, no X-ray, 24 fps, frame and encoding limits.
-2. Three.js implementation choices: `MeshStandardMaterial`, neutral light rig, fixed-frame GSAP seeking, and browser/frame-sequence capture. These are equivalent implementation strategies, not fields mandated by the Blender add-on.
+2. Three.js implementation choices: `MeshStandardMaterial`, neutral light rig, neutral background color, fixed-frame GSAP seeking, and browser/frame-sequence capture. These are equivalent implementation strategies, not fields mandated by the Blender add-on.

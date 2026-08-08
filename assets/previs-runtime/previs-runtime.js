@@ -64,6 +64,7 @@ export function createJimengPrevis(options) {
     mount = canvas?.parentElement,
     apiName = '__JIMENG_PREVIS__',
     exportCommand = 'npm run export:jimeng',
+    ready = null,
   } = options ?? {}
 
   if (!renderer || !scene || !camera || !canvas) throw new Error('renderer, scene, camera, and canvas are required')
@@ -84,6 +85,8 @@ export function createJimengPrevis(options) {
   let playbackStartFrame = currentFrame
   let destroyed = false
   let toastTimer = null
+  let runtimeReady = ready == null
+  let readyError = null
 
   mount?.classList.add('jimeng-previs-host')
   document.documentElement.classList.toggle('jimeng-previs-capture', captureMode)
@@ -158,7 +161,8 @@ export function createJimengPrevis(options) {
     })
 
     return {
-      ready: true,
+      ready: runtimeReady,
+      readyError,
       frame: currentFrame,
       frameStart,
       frameEnd,
@@ -175,6 +179,9 @@ export function createJimengPrevis(options) {
   }
 
   function renderFrame(frame, renderOptions = {}) {
+    if (!runtimeReady) {
+      throw new Error(readyError ? `Jimeng previs failed to become ready: ${readyError}` : 'Jimeng previs is not ready')
+    }
     const { capture = false } = renderOptions
     currentFrame = clamp(Math.round(frame), frameStart, frameEnd)
     const time = (currentFrame - frameStart) / fps
@@ -194,6 +201,7 @@ export function createJimengPrevis(options) {
   }
 
   function play() {
+    if (!runtimeReady) throw new Error('Jimeng previs is not ready')
     if (currentFrame >= frameEnd) currentFrame = frameStart
     inspection = false
     playing = true
@@ -261,8 +269,10 @@ export function createJimengPrevis(options) {
   window.addEventListener('resize', onResize)
 
   const api = {
-    version: '1.0.0',
-    ready: true,
+    version: '1.1.0',
+    get ready() { return runtimeReady },
+    get readyError() { return readyError },
+    whenReady: null,
     renderFrame,
     play,
     pause,
@@ -280,7 +290,26 @@ export function createJimengPrevis(options) {
   }
 
   window[apiName] = api
-  renderFrame(currentFrame, { capture: captureMode })
-  requestAnimationFrame(animationLoop)
+  function startRuntime() {
+    if (destroyed) return api
+    runtimeReady = true
+    renderFrame(currentFrame, { capture: captureMode })
+    requestAnimationFrame(animationLoop)
+    return api
+  }
+
+  if (runtimeReady) {
+    startRuntime()
+    api.whenReady = Promise.resolve(api)
+  } else {
+    const pending = Array.isArray(ready) ? ready : [ready]
+    api.whenReady = Promise.all(pending)
+      .then(startRuntime)
+      .catch((error) => {
+        readyError = error instanceof Error ? error.message : String(error)
+        console.error('Jimeng previs ready contract failed:', error)
+        throw error
+      })
+  }
   return api
 }

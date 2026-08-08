@@ -6,7 +6,10 @@
 
 - 将 Three.js 场景统一为 Blender Workbench 风格的白模效果
 - 提供可复制的统一播放、逐帧、自由观察、截帧和导出 UI
-- 复用白模材质、GLB 加载和确定性相机帧时钟
+- 复用 Camera Rig、Shot、Studio Stage、白模 Primitive 和安全 GLB normalize helpers
+- 保留原生 Three.js / GSAP `onFrame()` escape hatch，不强制使用 DSL
+- 只维护一套当前 API，不为旧项目堆叠兼容层
+- 复用白模材质、异步加载门控和确定性相机帧时钟
 - 使用固定 24 fps 保证相机动画可重复
 - 自动抓取多张关键帧，并要求 Codex 实际看图验收
 - 逐帧导出并检查 H.264 MP4 视频参数

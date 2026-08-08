@@ -84,7 +84,11 @@ try {
   initialUrl.searchParams.set('capture', '1')
   initialUrl.searchParams.set('frame', String(frames[0]))
   await page.goto(initialUrl.href, { waitUntil: 'networkidle' })
-  await page.waitForFunction(() => Boolean(window.__JIMENG_PREVIS__?.ready), null, { timeout: 20000 })
+  await page.waitForFunction(() => Boolean(
+    window.__JIMENG_PREVIS__?.ready || window.__JIMENG_PREVIS__?.readyError,
+  ), null, { timeout: 20000 })
+  const readyError = await page.evaluate(() => window.__JIMENG_PREVIS__?.readyError)
+  if (readyError) throw new Error(`Previs ready contract failed: ${readyError}`)
   await page.addStyleTag({ content: `
     html, body { width: 100% !important; height: 100% !important; margin: 0 !important; overflow: hidden !important; }
     body > * { width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important; }

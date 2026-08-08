@@ -1,0 +1,186 @@
+#!/usr/bin/env node
+
+import assert from 'node:assert/strict'
+import * as THREE from 'three'
+import { createCameraRig } from '../../src/jimeng-previs/camera-rig.js'
+import { getPrevisBounds, loadPrevisModel } from '../../src/jimeng-previs/model.js'
+import { createBox, createCapsule, createProductBlock } from '../../src/jimeng-previs/primitives.js'
+import { createShot } from '../../src/jimeng-previs/shot.js'
+import { createPrevisStage } from '../../src/jimeng-previs/stage.js'
+import { restoreOriginalMaterials } from '../../src/jimeng-previs/white-model.js'
+
+globalThis.ProgressEvent ??= class ProgressEvent {
+  constructor(type, init = {}) { this.type = type; Object.assign(this, init) }
+}
+
+let gsap = null
+try {
+  const gsapModule = await import('gsap')
+  gsap = gsapModule.default ?? gsapModule.gsap
+} catch {
+  console.warn('SKIP: GSAP is not installed; core runtime regressions will still run')
+}
+
+const EPSILON = 1e-6
+
+function close(actual, expected, message) {
+  assert.ok(Math.abs(actual - expected) <= EPSILON, `${message}: expected ${expected}, got ${actual}`)
+}
+
+function snapshotCamera(camera) {
+  return [
+    ...camera.position.toArray(),
+    ...camera.quaternion.toArray(),
+  ].map((value) => Number(value.toFixed(9)))
+}
+
+function pad(buffer, fill = 0) {
+  const padding = (4 - (buffer.length % 4)) % 4
+  return padding === 0 ? buffer : Buffer.concat([buffer, Buffer.alloc(padding, fill)])
+}
+
+function createTriangleGlb(positions) {
+  const values = new Float32Array(positions.flat())
+  const binary = pad(Buffer.from(values.buffer, values.byteOffset, values.byteLength))
+  const minimum = [0, 1, 2].map((axis) => Math.min(...positions.map((position) => position[axis])))
+  const maximum = [0, 1, 2].map((axis) => Math.max(...positions.map((position) => position[axis])))
+  const json = pad(Buffer.from(JSON.stringify({
+    asset: { version: '2.0', generator: 'threejs-jimeng-previs regression' },
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0 }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, mode: 4 }] }],
+    buffers: [{ byteLength: binary.length }],
+    bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: binary.length, target: 34962 }],
+    accessors: [{
+      bufferView: 0,
+      componentType: 5126,
+      count: positions.length,
+      type: 'VEC3',
+      min: minimum,
+      max: maximum,
+    }],
+  })), 0x20)
+  const totalLength = 12 + 8 + json.length + 8 + binary.length
+  const glb = Buffer.alloc(totalLength)
+  glb.writeUInt32LE(0x46546c67, 0)
+  glb.writeUInt32LE(2, 4)
+  glb.writeUInt32LE(totalLength, 8)
+  glb.writeUInt32LE(json.length, 12)
+  glb.writeUInt32LE(0x4e4f534a, 16)
+  json.copy(glb, 20)
+  const binaryHeader = 20 + json.length
+  glb.writeUInt32LE(binary.length, binaryHeader)
+  glb.writeUInt32LE(0x004e4942, binaryHeader + 4)
+  binary.copy(glb, binaryHeader + 8)
+  return `data:model/gltf-binary;base64,${glb.toString('base64')}`
+}
+
+async function testCameraRig() {
+  const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100)
+  const target = new THREE.Object3D()
+  target.position.set(1, 2, 3)
+  target.updateMatrixWorld(true)
+  const rig = createCameraRig({ camera, target, orbitAngle: -0.5, distance: 8, height: 2, truck: 0.4 })
+
+  rig.update()
+  const first = snapshotCamera(camera)
+  rig.update()
+  assert.deepEqual(snapshotCamera(camera), first, 'Repeated rig update must be deterministic')
+
+  const originalDistance = camera.position.distanceTo(rig.getTargetPosition())
+  rig.dolly(-2).orbit(0.4).crane(1).truck(-0.2).update()
+  assert.ok(camera.position.distanceTo(rig.getTargetPosition()) < originalDistance, 'Dolly must reduce target distance')
+
+  const beforeMove = camera.position.clone()
+  target.position.x += 3
+  target.updateMatrixWorld(true)
+  rig.update()
+  close(camera.position.x - beforeMove.x, 3, 'Camera must follow a moving target')
+}
+
+async function testShot() {
+  if (!gsap) return
+  const object = new THREE.Object3D()
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+  const rig = createCameraRig({ camera, distance: 10, height: 2 })
+  const shot = createShot({ gsap, frameStart: 1, frameEnd: 120 })
+  shot.move(object, { from: [0, 0, 0], to: [4, 2, -1], startFrame: 1, endFrame: 96, ease: 'none' })
+  shot.rotate(object, { from: [0, 0, 0], to: [0, Math.PI, 0], startFrame: 1, endFrame: 96, ease: 'none' })
+  shot.orbit(rig, { from: 0, to: Math.PI / 2, startFrame: 1, endFrame: 96, ease: 'none' })
+  shot.dolly(rig, { from: 10, to: 6, startFrame: 1, endFrame: 96, ease: 'none' })
+
+  for (const frame of [1, 31, 61, 90, 120]) {
+    shot.seek(frame)
+    rig.update()
+    assert.ok(snapshotCamera(camera).every(Number.isFinite), `Frame ${frame} camera state must be finite`)
+  }
+
+  shot.seek(61)
+  rig.update()
+  const first = { position: object.position.toArray(), camera: snapshotCamera(camera) }
+  shot.seek(1)
+  shot.seek(61)
+  rig.update()
+  assert.deepEqual({ position: object.position.toArray(), camera: snapshotCamera(camera) }, first, 'Shot seek must be repeatable')
+
+  shot.seek(96)
+  rig.update()
+  const holdStart = { position: object.position.toArray(), camera: snapshotCamera(camera) }
+  shot.seek(120)
+  rig.update()
+  assert.deepEqual({ position: object.position.toArray(), camera: snapshotCamera(camera) }, holdStart, 'Frames after the last tween must hold')
+}
+
+async function testModels() {
+  const normalUrl = createTriangleGlb([[0, 0, 0], [2, 0, 0], [0, 1, 1]])
+  const normal = await loadPrevisModel(normalUrl, { normalize: true, targetSize: 2 })
+  close(Math.max(...normal.size.toArray()), 2, 'Normal GLB target size')
+  close(normal.modelRoot.scale.x, normal.modelRoot.scale.y, 'Uniform scale x/y')
+  close(normal.modelRoot.scale.y, normal.modelRoot.scale.z, 'Uniform scale y/z')
+
+  assert.equal(normal.scene.children[0].material?.name, 'JimengWhiteModel')
+  assert.equal(restoreOriginalMaterials(normal.scene), 1, 'Loaded model materials must remain restorable')
+
+  const offsetUrl = createTriangleGlb([[10, 2, -3], [14, 2, -3], [10, 6, 1]])
+  const preserved = await loadPrevisModel(offsetUrl, { normalize: true, targetSize: 4, ground: true })
+  close(Math.max(...preserved.size.toArray()), 4, 'Offset GLB target size')
+  close(preserved.bounds.min.y, 0, 'Ground contact')
+  assert.ok(Math.abs(preserved.bounds.getCenter(new THREE.Vector3()).x) > 1, 'Centering must remain optional')
+  assert.deepEqual(preserved.scene.position.toArray(), [0, 0, 0], 'Authored glTF scene pivot must not be mutated')
+
+  const centered = await loadPrevisModel(offsetUrl, { normalize: true, targetSize: 2, center: 'xz', ground: true })
+  const centeredPoint = centered.bounds.getCenter(new THREE.Vector3())
+  close(centeredPoint.x, 0, 'Optional center x')
+  close(centeredPoint.z, 0, 'Optional center z')
+  close(centered.bounds.min.y, 0, 'Centered model ground contact')
+
+  await assert.rejects(
+    loadPrevisModel('empty.glb', { loader: { loadAsync: async () => ({ scene: new THREE.Scene() }) } }),
+    /bounds are empty|non-zero size/,
+    'Empty GLB bounds must fail validation',
+  )
+}
+
+async function testStageAndPrimitives() {
+  const scene = new THREE.Scene()
+  const stage = createPrevisStage({ scene })
+  assert.equal(stage.root.parent, scene)
+  assert.ok(stage.ground?.receiveShadow)
+  assert.ok(stage.keyLight?.castShadow)
+
+  const box = createBox({ parent: stage.root, size: [2, 1, 3] })
+  const product = createProductBlock({ parent: stage.root })
+  const capsule = createCapsule({ parent: stage.root })
+  assert.ok(box.isMesh && product.isMesh && capsule.isMesh)
+  assert.ok(getPrevisBounds(stage.root).getSize(new THREE.Vector3()).length() > 0)
+  stage.dispose()
+  assert.equal(stage.root.parent, null)
+}
+
+await testCameraRig()
+await testShot()
+await testModels()
+await testStageAndPrimitives()
+gsap?.ticker.sleep()
+console.log(`PASS: camera, GLB, stage, primitive, deterministic replay, and static hold regressions${gsap ? ', including GSAP Shot' : ''}`)

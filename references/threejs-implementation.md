@@ -9,7 +9,7 @@ Create `jimeng-previs.config.json` at the project root:
 ```json
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.0.0", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.1.0", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -80,11 +80,15 @@ This copies versioned source into `src/jimeng-previs`, capture/export tools into
 
 See [runtime-api.md](runtime-api.md) for the integration surface.
 
+Prefer helpers for stable repeated patterns, not as a mandatory scene framework. Keep unusual camera math, object choreography, hierarchy, and art direction project-local. Every path, helper-based or native, must preserve the deterministic `onFrame({ frame, time })` contract and asset-readiness gate.
+
 ## Shared white material
 
-Use `createJimengWhiteMaterial`, `applyJimengWhiteModel`, and `createJimengGLTFLoader` from the installed runtime. Reapply the profile when meshes are added dynamically. If skinned or vertex-animated content fails with a shared material in the installed Three.js version, clone the same numeric profile only for the affected mesh and retain its required flags.
+Use `createJimengWhiteMaterial` and `applyJimengWhiteModel` for project-created meshes, and `loadPrevisModel` for GLB/glTF assets. Reapply the profile when meshes are added dynamically. If skinned or vertex-animated content fails with a shared material in the installed Three.js version, clone the same numeric profile only for the affected mesh and retain its required flags.
 
 ## Neutral studio rig
+
+Prefer `createPrevisStage({ scene })` or `createStudioLighting({ parent })`. Use the explicit equivalent below only when a project needs a materially different rig:
 
 ```js
 scene.background = new THREE.Color(0x303238)
@@ -99,9 +103,11 @@ fill.position.set(-4, 2, -3)
 scene.add(fill)
 ```
 
-Tune intensities for readable form, but keep all lights neutral and avoid a dramatic final-render look.
+`0x303238` is a neutral charcoal readability default, not a source-backed Jimeng requirement. The inspected uploader does not set the Blender background. Override it when needed for clear silhouette separation. Tune intensities for readable form, but keep all lights neutral and avoid a dramatic final-render look.
 
 ## Deterministic GSAP camera
+
+Prefer `createCameraRig` and `createShot` for ordinary orbit, dolly, truck, crane, move, and rotate blocking. Direct GSAP and native math remain supported:
 
 ```js
 const FPS = 24

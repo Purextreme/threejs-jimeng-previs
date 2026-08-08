@@ -57,7 +57,7 @@ if (config) {
   expectEqual(config.profile, 'jimeng-white-model-v1', 'profile')
   expectNumber(config.fps, 24, 'fps')
 
-  expectEqual(config.runtime?.version, '1.0.0', 'runtime.version')
+  expectEqual(config.runtime?.version, '1.1.0', 'runtime.version')
   if (typeof config.runtime?.path !== 'string' || !config.runtime.path.trim()) {
     fail('runtime.path must be a non-empty project-relative path')
   } else {
@@ -65,7 +65,18 @@ if (config) {
     if (!runtimeDir.startsWith(projectDir + path.sep)) {
       fail(`runtime.path escapes the project directory: ${config.runtime.path}`)
     } else {
-      for (const filename of ['index.js', 'previs-runtime.js', 'previs-runtime.css', 'white-model.js']) {
+      const runtimeFiles = [
+        'index.js',
+        'previs-runtime.js',
+        'previs-runtime.css',
+        'white-model.js',
+        'camera-rig.js',
+        'model.js',
+        'primitives.js',
+        'shot.js',
+        'stage.js',
+      ]
+      for (const filename of runtimeFiles) {
         if (!fs.existsSync(path.join(runtimeDir, filename))) fail(`runtime file not found: ${path.join(config.runtime.path, filename)}`)
       }
     }
@@ -152,7 +163,9 @@ if (config) {
     if (source && /Mesh(Basic|Phong|Lambert|Toon|Physical|Matcap|Normal|Depth)Material/.test(source)) {
       warn('alternate mesh material constructors found; visually verify that every final render mesh is overridden')
     }
-    if (source && !/GLTFLoader/.test(source)) warn('GLTFLoader not found; acceptable only when the project does not load GLB/glTF assets')
+    if (source && !/GLTFLoader|loadPrevisModel/.test(source)) {
+      warn('No GLB/glTF loader found; acceptable only when the project does not load GLB/glTF assets')
+    }
     if (source && !/OrbitControls/.test(source)) warn('OrbitControls not found; acceptable when no interactive inspection is required')
   }
 }

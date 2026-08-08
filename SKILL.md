@@ -27,16 +27,32 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 
 ## Reuse the previs runtime
 
+Apply a reuse-first, not reuse-only policy:
+
+1. Prefer bundled runtime modules for common previs operations; do not reimplement an existing helper without a concrete reason.
+2. Treat helpers as the recommended happy path, not the only valid implementation. Use native Three.js or GSAP when a helper makes the shot harder, less clear, or less reliable.
+3. Keep `createJimengPrevis({ onFrame })` as the core escape hatch. Allow direct `position`, `quaternion`, `matrix`, custom math, and project-local GSAP timelines.
+4. Keep project-local any abstraction that serves one shot, needs many exceptional parameters, or is more complex than direct Three.js.
+5. Preserve the deterministic frame, readiness, capture, white-model, validation, and export contract for every custom implementation.
+6. Maintain one current runtime API. Do not add compatibility wrappers, version branches, aliases, or migration code for superseded project interfaces.
+
+Treat these as the hard contract: 24 fps deterministic frame time; repeatable authored state from `renderFrame(frame)`; disabled inspection controls during playback/capture; completed GLB/glTF loading before capture; the PNG-sequence to FFmpeg to H.264 MP4 path; `capture:jimeng` and `export:jimeng`; the white-model profile; and visual validation.
+
+Treat camera technique, GSAP use, helper use, primitive composition, object hierarchy, and direct transform math as soft conventions. Never distort a requested shot to fit the helpers.
+
 - From the Skill root, install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
 
   `node scripts/install-runtime.mjs <project-dir>`
 
 - Let the installer reuse an existing project-level `playwright-core` or `playwright` dependency. Only rerun with `--install` when it reports that the capture dependency is missing; the flag must not trigger npm when the dependency is already declared and resolvable.
 - Inspect existing `src/jimeng-previs` files before passing `--force`; do not overwrite user-modified runtime files without reviewing the diff.
-- Keep scene-specific geometry, lights, shot state, and GSAP timelines in project code. Connect them through `createJimengPrevis({ onFrame })`.
+- Reuse `createCameraRig`, `createShot`, `createPrevisStage`, `loadPrevisModel`, and the small primitive helpers for ordinary work. Read [references/runtime-api.md](references/runtime-api.md) for their APIs and escape hatches.
+- Keep scene-specific geometry, art direction, special lighting, unusual shot math, and custom GSAP timelines in project code. Connect them through `createJimengPrevis({ onFrame })`.
+- Pass model-loading promises through `createJimengPrevis({ ready })` when the runtime is created before assets finish loading. Capture must wait for `window.__JIMENG_PREVIS__.ready`.
 - Keep the final output frame rate fixed at 24 fps. Treat playback speed as a separate preview-only concern.
 - Use the runtime extension boundary for project-specific controls. Do not fork the transport UI for ordinary scene parameters.
 - Run `npm run capture:jimeng` for visual-validation frames and `npm run export:jimeng` for a deterministic H.264 MP4.
+- Run `npm run test:jimeng-runtime` after installing or updating the shared helpers.
 
 ## Record improvement candidates
 
@@ -54,6 +70,7 @@ Create camera-animation previews that communicate silhouette, scale, staging, ti
 - Keep original materials available for restoration; do not dispose user-owned materials during a temporary override.
 - Use neutral studio-style lighting. Avoid colored lights, dramatic HDR environments, bloom, LUTs, fog, depth-of-field, motion blur, and texture-driven backgrounds unless the user explicitly requests a non-white-model variant.
 - Use a neutral, uncluttered background with clear silhouette separation. Treat its exact color as an artistic project choice because the inspected Blender uploader does not force one.
+- The bundled Stage defaults to neutral charcoal `#303238`, not black. Treat this as a soft readability default: the inspected uploader does not set a background color, so override it when another neutral background gives the requested subject clearer separation.
 - Keep X-ray and wireframe disabled for the final preview.
 
 ## Make camera motion deterministic

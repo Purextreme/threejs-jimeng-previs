@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 export const JIMENG_WHITE_MODEL_PROFILE = Object.freeze({
   color: 0xc7c7c7,
@@ -65,23 +64,4 @@ export function restoreOriginalMaterials(root) {
     restored += 1
   })
   return restored
-}
-
-export function createJimengGLTFLoader(options = {}) {
-  const {
-    loader = new GLTFLoader(),
-    parent = null,
-    material = createJimengWhiteMaterial(),
-    castShadow = true,
-    receiveShadow = true,
-  } = options
-
-  async function load(url, onProgress) {
-    const gltf = await loader.loadAsync(url, onProgress)
-    applyJimengWhiteModel(gltf.scene, { material, castShadow, receiveShadow })
-    if (parent) parent.add(gltf.scene)
-    return gltf
-  }
-
-  return { loader, load, material }
 }
