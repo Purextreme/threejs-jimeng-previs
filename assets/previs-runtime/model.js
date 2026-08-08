@@ -40,6 +40,9 @@ export async function loadPrevisModel(url, options = {}) {
 
   if (parent != null && !parent.isObject3D) throw new Error('parent must be null or a Three.js Object3D')
   if (!loader || typeof loader.loadAsync !== 'function') throw new Error('loader must provide loadAsync(url, onProgress)')
+  if (center !== false && center !== true && center !== 'xz') {
+    throw new Error("center must be false, true, or 'xz'")
+  }
   if (normalize && (!Number.isFinite(targetSize) || targetSize <= 0)) {
     throw new Error('targetSize must be a finite number greater than zero')
   }

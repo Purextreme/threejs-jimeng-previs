@@ -3,10 +3,6 @@ function vectorVars(value) {
   return { x: value[0], y: value[1], z: value[2] }
 }
 
-function currentValues(target, keys) {
-  return Object.fromEntries(keys.map((key) => [key, target[key]]))
-}
-
 export function createShot(options = {}) {
   const {
     fps = 24,
@@ -21,7 +17,7 @@ export function createShot(options = {}) {
   if (!Number.isInteger(frameStart) || !Number.isInteger(frameEnd) || frameEnd < frameStart) {
     throw new Error('frameStart and frameEnd must be valid inclusive integers')
   }
-  if (!timeline || typeof timeline.fromTo !== 'function' || typeof timeline.seek !== 'function') {
+  if (!timeline || ['to', 'fromTo', 'set', 'seek', 'clear'].some((method) => typeof timeline[method] !== 'function')) {
     throw new Error('createShot requires { gsap } or an existing GSAP timeline')
   }
 
@@ -35,16 +31,14 @@ export function createShot(options = {}) {
       throw new Error('Shot operation frames must be inclusive integers with endFrame >= startFrame')
     }
 
-    const from = settings.from ?? currentValues(target, Object.keys(to))
     const startTime = frameTime(startFrame)
     const duration = frameTime(endFrame) - startTime
     if (duration === 0) timeline.set(target, to, startTime)
-    else timeline.fromTo(target, from, {
-      ...to,
-      duration,
-      ease: settings.ease ?? defaultEase,
-      immediateRender: false,
-    }, startTime)
+    else {
+      const tween = { ...to, duration, ease: settings.ease ?? defaultEase }
+      if (settings.from === undefined) timeline.to(target, tween, startTime)
+      else timeline.fromTo(target, settings.from, { ...tween, immediateRender: false }, startTime)
+    }
     return api
   }
 
@@ -62,13 +56,13 @@ export function createShot(options = {}) {
     orbit(rig, settings = {}) {
       return add(rig?.state, { orbitAngle: settings.to }, {
         ...settings,
-        from: { orbitAngle: settings.from ?? rig?.state?.orbitAngle },
+        from: settings.from === undefined ? undefined : { orbitAngle: settings.from },
       })
     },
     dolly(rig, settings = {}) {
       return add(rig?.state, { distance: settings.to }, {
         ...settings,
-        from: { distance: settings.from ?? rig?.state?.distance },
+        from: settings.from === undefined ? undefined : { distance: settings.from },
       })
     },
     to(target, to, settings = {}) {

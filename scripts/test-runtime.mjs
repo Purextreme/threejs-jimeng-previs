@@ -130,6 +130,43 @@ async function testShot() {
   shot.seek(120)
   rig.update()
   assert.deepEqual({ position: object.position.toArray(), camera: snapshotCamera(camera) }, holdStart, 'Frames after the last tween must hold')
+
+  const chainedObject = new THREE.Object3D()
+  const chainedRig = createCameraRig({ camera: new THREE.PerspectiveCamera(), orbitAngle: 0, distance: 10 })
+  const chainedShot = createShot({ gsap, frameStart: 1, frameEnd: 60, defaultEase: 'none' })
+  chainedShot.move(chainedObject, { to: [2, 0, 0], startFrame: 1, endFrame: 30 })
+  chainedShot.rotate(chainedObject, { to: [0, 1, 0], startFrame: 1, endFrame: 30 })
+  chainedShot.orbit(chainedRig, { to: 1, startFrame: 1, endFrame: 30 })
+  chainedShot.dolly(chainedRig, { to: 8, startFrame: 1, endFrame: 30 })
+  chainedShot.move(chainedObject, { to: [5, 0, 0], startFrame: 31, endFrame: 60 })
+  chainedShot.rotate(chainedObject, { to: [0, 2, 0], startFrame: 31, endFrame: 60 })
+  chainedShot.orbit(chainedRig, { to: 2, startFrame: 31, endFrame: 60 })
+  chainedShot.dolly(chainedRig, { to: 6, startFrame: 31, endFrame: 60 })
+
+  chainedShot.seek(60)
+  close(chainedObject.position.x, 5, 'Chained move final value')
+  close(chainedObject.rotation.y, 2, 'Chained rotate final value')
+  close(chainedRig.state.orbitAngle, 2, 'Chained orbit final value')
+  close(chainedRig.state.distance, 6, 'Chained dolly final value')
+  chainedShot.seek(31)
+  close(chainedObject.position.x, 2, 'Chained move must inherit the previous segment')
+  close(chainedObject.rotation.y, 1, 'Chained rotate must inherit the previous segment')
+  close(chainedRig.state.orbitAngle, 1, 'Chained orbit must inherit the previous segment')
+  close(chainedRig.state.distance, 8, 'Chained dolly must inherit the previous segment')
+  const chainedBoundary = {
+    position: chainedObject.position.toArray(),
+    rotationY: chainedObject.rotation.y,
+    orbitAngle: chainedRig.state.orbitAngle,
+    distance: chainedRig.state.distance,
+  }
+  chainedShot.seek(1)
+  chainedShot.seek(31)
+  assert.deepEqual({
+    position: chainedObject.position.toArray(),
+    rotationY: chainedObject.rotation.y,
+    orbitAngle: chainedRig.state.orbitAngle,
+    distance: chainedRig.state.distance,
+  }, chainedBoundary, 'Chained segment boundary must be repeatable')
 }
 
 async function testModels() {
@@ -155,6 +192,17 @@ async function testModels() {
   close(centeredPoint.z, 0, 'Optional center z')
   close(centered.bounds.min.y, 0, 'Centered model ground contact')
 
+  let invalidCenterLoaded = false
+  await assert.rejects(
+    loadPrevisModel('invalid-center.glb', {
+      center: 'xyz',
+      loader: { loadAsync: async () => { invalidCenterLoaded = true; return { scene: new THREE.Scene() } } },
+    }),
+    /center must be false, true, or 'xz'/,
+    'Invalid center modes must fail fast',
+  )
+  assert.equal(invalidCenterLoaded, false, 'Invalid center modes must fail before loading')
+
   await assert.rejects(
     loadPrevisModel('empty.glb', { loader: { loadAsync: async () => ({ scene: new THREE.Scene() }) } }),
     /bounds are empty|non-zero size/,
@@ -164,8 +212,10 @@ async function testModels() {
 
 async function testStageAndPrimitives() {
   const scene = new THREE.Scene()
-  const stage = createPrevisStage({ scene })
+  const renderer = { shadowMap: { enabled: false } }
+  const stage = createPrevisStage({ scene, renderer })
   assert.equal(stage.root.parent, scene)
+  assert.equal(renderer.shadowMap.enabled, true, 'Stage must enable an explicitly supplied renderer shadow map')
   assert.ok(stage.ground?.receiveShadow)
   assert.ok(stage.keyLight?.castShadow)
 
@@ -176,6 +226,11 @@ async function testStageAndPrimitives() {
   assert.ok(getPrevisBounds(stage.root).getSize(new THREE.Vector3()).length() > 0)
   stage.dispose()
   assert.equal(stage.root.parent, null)
+
+  const shadowlessRenderer = { shadowMap: { enabled: false } }
+  const shadowlessStage = createPrevisStage({ scene: new THREE.Scene(), renderer: shadowlessRenderer, shadows: false })
+  assert.equal(shadowlessRenderer.shadowMap.enabled, false, 'A shadowless stage must not mutate renderer shadow state')
+  shadowlessStage.dispose()
 }
 
 await testCameraRig()

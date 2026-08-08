@@ -9,7 +9,7 @@ Create `jimeng-previs.config.json` at the project root:
 ```json
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.1.0", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.1.1", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -88,7 +88,7 @@ Use `createJimengWhiteMaterial` and `applyJimengWhiteModel` for project-created 
 
 ## Neutral studio rig
 
-Prefer `createPrevisStage({ scene })` or `createStudioLighting({ parent })`. Use the explicit equivalent below only when a project needs a materially different rig:
+Prefer `createPrevisStage({ scene, renderer })` or `createStudioLighting({ parent })`. Passing the renderer lets the Stage enable its shadow map; omit it when the project owns renderer state. Use the explicit equivalent below only when a project needs a materially different rig:
 
 ```js
 scene.background = new THREE.Color(0x303238)

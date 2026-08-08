@@ -111,14 +111,16 @@ onFrame({ frame }) {
 
 Pass the project's GSAP instance or an existing paused `timeline`; the runtime does not make GSAP a hidden dependency. Use `move`, `rotate`, `orbit`, and `dolly` for the most repeated operations. Use `shot.to()` for any other simple numeric target such as `rig.state.height` or `rig.state.truck`, `shot.timeline` for direct GSAP access, or skip the helper entirely for custom motion.
 
+Omit `from` to continue from the state produced by an earlier timeline segment. Provide `from` only when the segment must begin from an explicit authored value.
+
 ### Stage and primitives
 
 ```js
-const stage = createPrevisStage({ scene, ground: true })
+const stage = createPrevisStage({ scene, renderer, ground: true })
 const block = createProductBlock({ parent: stage.root, size: [3, 1.8, 1] })
 ```
 
-`createPrevisStage` supplies a neutral charcoal background (`#303238`, not black), ground, HemisphereLight, key, fill, rim, and basic shadows. The uploader does not mandate a background color, so override `background` whenever another neutral value separates the subject more clearly. Override or disable any other part through its options, add custom lights, or use `createStudioLighting` alone. Primitive helpers are intentionally limited to box, rounded box/product block, cylinder, plane, and capsule.
+`createPrevisStage` supplies a neutral charcoal background (`#303238`, not black), ground, HemisphereLight, key, fill, rim, and basic shadows. Pass `renderer` to let the Stage enable `renderer.shadowMap`; omit it when renderer state is managed elsewhere. The uploader does not mandate a background color, so override `background` whenever another neutral value separates the subject more clearly. Override or disable any other part through its options, add custom lights, or use `createStudioLighting` alone. Primitive helpers are intentionally limited to box, rounded box/product block, cylinder, plane, and capsule.
 
 ### Models
 
@@ -132,7 +134,7 @@ const product = await loadPrevisModel('./product.glb', {
 })
 ```
 
-The result retains `gltf`, `scene`, `animations`, `motionRoot`, and `modelRoot`, plus validated bounds and uniform scale. Normalization, centering, and grounding move only the wrapper `modelRoot`; the authored glTF scene and its pivots remain intact. Centering and grounding default to `false`. Animate `motionRoot` for shot motion. Pass a configured `GLTFLoader` through `options.loader` when needed; for unusual asset logic, load directly and connect its promise through `createJimengPrevis({ ready })`.
+The result retains `gltf`, `scene`, `animations`, `motionRoot`, and `modelRoot`, plus validated bounds and uniform scale. Normalization, centering, and grounding move only the wrapper `modelRoot`; the authored glTF scene and its pivots remain intact. Use `center: false` for no centering, `center: 'xz'` for horizontal centering, or `center: true` for all-axis centering; other values fail before loading. These calculations assume the supplied parent and wrapper roots have identity transforms; apply custom parent transforms afterward. Animate `motionRoot` for shot motion. Pass a configured `GLTFLoader` through `options.loader` when needed; for unusual asset logic, load directly and connect its promise through `createJimengPrevis({ ready })`.
 
 ## Native escape hatch
 

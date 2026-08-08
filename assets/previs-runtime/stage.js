@@ -67,6 +67,7 @@ export function createStudioLighting(options = {}) {
 export function createPrevisStage(options = {}) {
   const {
     scene,
+    renderer = null,
     background = 0x303238,
     ground = true,
     groundSize = 24,
@@ -77,6 +78,8 @@ export function createPrevisStage(options = {}) {
   } = options
 
   if (!scene?.isScene) throw new Error('createPrevisStage requires a Three.js Scene')
+  if (renderer != null && !renderer.shadowMap) throw new Error('renderer must expose a shadowMap')
+  if (renderer && shadows) renderer.shadowMap.enabled = true
   const previousBackground = scene.background
   const stageBackground = background === false ? null : background?.isColor ? background : new THREE.Color(background)
   if (stageBackground) scene.background = stageBackground
