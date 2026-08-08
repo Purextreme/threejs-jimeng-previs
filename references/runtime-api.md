@@ -101,7 +101,9 @@ rig.update()
 
 Prefer Position + Target + optional Roll for ordinary authored camera motion. `rig.position`, `rig.targetPosition`, and `rig.targetOffset` are public `Vector3` instances; `rig.roll` is a public numeric property. `update()` copies the authored position to the camera, resolves the target, calls `camera.lookAt()`, then applies Roll. `rig.camera` always exposes the original camera, and direct rotation, quaternion, matrix, or custom camera math remain valid escape hatches.
 
-Passing an authored `position` selects `direct` mode. A rig created without `position` starts in `orbit` mode to support orbit-style initialization. Check `rig.mode`, switch explicitly with `useDirectPosition()` or `useOrbit()`, and use `setPosition()` when setting a new direct position. Orbit setters and the Shot orbit/dolly helpers select orbit mode; call `useDirectPosition()` before directly authoring `rig.position` again.
+Passing an authored `position` selects `direct` mode. A rig created without `position` starts in `orbit` mode to support orbit-style initialization. Check `rig.mode`, switch explicitly with `useDirectPosition()` or `useOrbit()`, and use `setPosition()` when setting a new direct position. Orbit setters select orbit mode. Shot orbit/dolly helpers require the Rig to be in orbit mode already and fail without changing it; call `useOrbit()` before building an orbit-authored Shot.
+
+Use one position-authoring mode per Camera Rig within a continuous Shot. For an ordinary complex path, animate Position + Target in direct mode. If a requested shot genuinely needs mixed or unusual math, use native Three.js or a project-local deterministic timeline instead of hiding mode changes inside helpers. `update()` fails fast when Camera Position and the resolved Target are coincident or less than `1e-6` scene units apart because `lookAt()` has no stable direction there.
 
 Use an `Object3D` target to follow a moving product. Its world position is resolved every frame; animate `targetOffset` when the point of attention must move relative to that object:
 
@@ -149,6 +151,8 @@ onFrame({ frame }) {
 ```
 
 Pass the project's GSAP instance or an existing paused `timeline`; the runtime does not make GSAP a hidden dependency. Use `move`, `rotate`, `orbit`, and `dolly` for the most repeated operations. Use `shot.to()` for camera position, target position, target offset, Roll, or any other numeric target. Use `shot.timeline` for direct GSAP access, or skip the helper entirely for custom motion.
+
+`shot.orbit()` and `shot.dolly()` never change `rig.mode`. Put the Rig in orbit mode before constructing these tweens. Do not schedule Direct-to-Orbit or Orbit-to-Direct mode changes inside one helper Shot; author the camera position directly or use custom deterministic code when a shot needs that behavior.
 
 Omit `from` to continue from the state produced by an earlier timeline segment. Provide `from` only when the segment must begin from an explicit authored value.
 

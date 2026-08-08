@@ -269,7 +269,7 @@ export function createJimengPrevis(options) {
   window.addEventListener('resize', onResize)
 
   const api = {
-    version: '1.2.0',
+    version: '1.2.1',
     get ready() { return runtimeReady },
     get readyError() { return readyError },
     whenReady: null,

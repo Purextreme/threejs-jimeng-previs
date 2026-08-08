@@ -154,6 +154,25 @@ async function testCameraRig() {
     () => createCameraRig({ camera: new THREE.PerspectiveCamera(), mode: 'automatic' }),
     /mode must be 'direct' or 'orbit'/,
   )
+
+  const degenerateRig = createCameraRig({
+    camera: new THREE.PerspectiveCamera(),
+    position: [1, 2, 3],
+    target: [1, 2, 3],
+  })
+  assert.throws(
+    () => degenerateRig.update(),
+    /position and resolved target must be more than .* units apart/,
+    'Coincident camera and target positions must fail fast',
+  )
+  degenerateRig.targetPosition.z += 1e-7
+  assert.throws(
+    () => degenerateRig.update(),
+    /position and resolved target must be more than .* units apart/,
+    'Near-coincident camera and target positions must fail fast',
+  )
+  degenerateRig.targetPosition.set(1, 2, 2)
+  assert.doesNotThrow(() => degenerateRig.update(), 'A corrected target must restore normal camera updates')
 }
 
 async function testShot() {
@@ -197,9 +216,33 @@ async function testShot() {
 
   const helperRig = createCameraRig({ camera: new THREE.PerspectiveCamera(), position: [6, 2, 8], target: [0, 1, 0] })
   const helperShot = createShot({ gsap, frameStart: 1, frameEnd: 60 })
+  helperShot.to(helperRig.position, { x: 5 }, {
+    from: { x: 6 }, startFrame: 1, endFrame: 30, ease: 'none',
+  })
+  assert.throws(
+    () => helperShot.orbit(helperRig, { from: 0, to: 0.5, startFrame: 31, endFrame: 60, ease: 'none' }),
+    /shot\.orbit\(\) requires a Camera Rig already in orbit mode/,
+    'Orbit helpers must reject an implicit Direct-to-Orbit mode change',
+  )
+  assert.throws(
+    () => helperShot.dolly(helperRig, { from: 10, to: 7, startFrame: 31, endFrame: 60, ease: 'none' }),
+    /shot\.dolly\(\) requires a Camera Rig already in orbit mode/,
+    'Dolly helpers must reject an implicit Direct-to-Orbit mode change',
+  )
+  assert.equal(helperRig.mode, 'direct', 'Rejected orbit helpers must not mutate the rig mode')
+  helperShot.seek(20)
+  helperRig.update()
+  const directHelperFrame20 = helperRig.getState()
+  helperShot.seek(1)
+  helperShot.seek(20)
+  helperRig.update()
+  assert.deepEqual(helperRig.getState(), directHelperFrame20, 'Rejected mode mixing must leave direct seeking repeatable')
+
+  helperShot.clear()
+  helperRig.useOrbit()
   helperShot.orbit(helperRig, { from: 0, to: 0.5, startFrame: 1, endFrame: 60, ease: 'none' })
   helperShot.dolly(helperRig, { from: 10, to: 7, startFrame: 1, endFrame: 60, ease: 'none' })
-  assert.equal(helperRig.mode, 'orbit', 'Shot orbit helpers must explicitly select orbit mode')
+  assert.equal(helperRig.mode, 'orbit', 'Orbit helpers must preserve an explicitly selected orbit mode')
   helperShot.seek(60)
   helperRig.update()
   close(helperRig.state.orbitAngle, 0.5, 'Shot orbit helper compatibility')

@@ -3,6 +3,13 @@ function vectorVars(value) {
   return { x: value[0], y: value[1], z: value[2] }
 }
 
+function requireOrbitRig(rig, helperName) {
+  if (rig?.mode !== 'orbit' || !rig?.state) {
+    throw new Error(`${helperName} requires a Camera Rig already in orbit mode; call rig.useOrbit() before building the shot`)
+  }
+  return rig
+}
+
 export function createShot(options = {}) {
   const {
     fps = 24,
@@ -54,15 +61,15 @@ export function createShot(options = {}) {
       return add(object?.rotation, vectorVars(settings.to), { ...settings, from: vectorVars(settings.from) })
     },
     orbit(rig, settings = {}) {
-      rig?.useOrbit?.()
-      return add(rig?.state, { orbitAngle: settings.to }, {
+      const orbitRig = requireOrbitRig(rig, 'shot.orbit()')
+      return add(orbitRig.state, { orbitAngle: settings.to }, {
         ...settings,
         from: settings.from === undefined ? undefined : { orbitAngle: settings.from },
       })
     },
     dolly(rig, settings = {}) {
-      rig?.useOrbit?.()
-      return add(rig?.state, { distance: settings.to }, {
+      const orbitRig = requireOrbitRig(rig, 'shot.dolly()')
+      return add(orbitRig.state, { distance: settings.to }, {
         ...settings,
         from: settings.from === undefined ? undefined : { distance: settings.from },
       })

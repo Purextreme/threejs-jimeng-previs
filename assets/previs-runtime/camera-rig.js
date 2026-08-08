@@ -1,5 +1,8 @@
 import * as THREE from 'three'
 
+const MIN_LOOK_DISTANCE = 1e-6
+const MIN_LOOK_DISTANCE_SQUARED = MIN_LOOK_DISTANCE ** 2
+
 function copyVector3(target, value, label) {
   const resolved = typeof value === 'function' ? value() : value
   if (resolved?.isObject3D) return resolved.getWorldPosition(target)
@@ -39,6 +42,7 @@ export function createCameraRig(options = {}) {
   const resolvedTarget = new THREE.Vector3()
   const resolvedOffset = new THREE.Vector3()
   const lookTarget = new THREE.Vector3()
+  const worldCameraPosition = new THREE.Vector3()
   const state = { orbitAngle, distance, height, truck, roll }
 
   copyVector3(cameraPosition, position ?? camera.position, 'position')
@@ -115,6 +119,11 @@ export function createCameraRig(options = {}) {
       }
 
       camera.position.copy(cameraPosition)
+      camera.updateWorldMatrix(true, false)
+      camera.getWorldPosition(worldCameraPosition)
+      if (worldCameraPosition.distanceToSquared(lookTarget) <= MIN_LOOK_DISTANCE_SQUARED) {
+        throw new Error(`Camera rig position and resolved target must be more than ${MIN_LOOK_DISTANCE} units apart for lookAt()`)
+      }
       camera.lookAt(lookTarget)
       if (state.roll !== 0) camera.rotateZ(state.roll)
       camera.updateMatrixWorld()

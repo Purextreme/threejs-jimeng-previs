@@ -77,7 +77,9 @@ Treat camera technique, GSAP use, helper use, primitive composition, object hier
 
 - Render through one explicit `PerspectiveCamera` unless the requested shot requires orthographic projection.
 - Prefer independently authored Camera Position + Target Position + optional Roll for ordinary camera motion. Use Orbit, Dolly, Crane, and Truck helpers when they naturally describe the shot.
+- Keep one position-authoring mode per Camera Rig within a continuous shot. Select `direct` or `orbit` before building its timeline; Shot orbit/dolly helpers must not switch modes implicitly. Author a mixed or unusual path through Position + Target, native Three.js, or project-local math instead of scheduling hidden mode changes.
 - Prefer target-based orientation over authored Euler rotation when the camera must maintain or transition visual attention. Keep direct camera rotation, quaternion, matrix, and custom math available as escape hatches, and never distort a requested shot to fit the Camera Rig.
+- Keep Camera Position and the resolved Target separated. Treat a coincident or near-coincident pair as an authored-path error rather than allowing a degenerate `lookAt()` orientation.
 - Separate inspection controls from the shot camera. Disable `OrbitControls` during playback and capture so controls cannot mutate the authored path.
 - Advance animation from frame time at 24 fps. Derive time as `(frame - frameStart) / 24`; do not make captured motion depend on variable browser delta time.
 - Keep the subject in frame and avoid unintended near/far clipping throughout the whole range.
