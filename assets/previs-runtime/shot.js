@@ -37,6 +37,9 @@ export function createShot(options = {}) {
     if (!Number.isInteger(startFrame) || !Number.isInteger(endFrame) || endFrame < startFrame) {
       throw new Error('Shot operation frames must be inclusive integers with endFrame >= startFrame')
     }
+    if (startFrame < frameStart || endFrame > frameEnd) {
+      throw new Error(`Shot operation frame range ${startFrame}-${endFrame} must stay within Shot range ${frameStart}-${frameEnd}`)
+    }
 
     const startTime = frameTime(startFrame)
     const duration = frameTime(endFrame) - startTime

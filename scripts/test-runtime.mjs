@@ -178,6 +178,25 @@ async function testCameraRig() {
 async function testShot() {
   if (!gsap) return
 
+  const rangeTarget = new THREE.Object3D()
+  const rangeRig = createCameraRig({ camera: new THREE.PerspectiveCamera(), target: [0, 0, 0] })
+  const rangeShot = createShot({ gsap, frameStart: 10, frameEnd: 20 })
+  const outOfRangeOperations = [
+    ['move startFrame', () => rangeShot.move(rangeTarget, { to: [1, 0, 0], startFrame: 9, endFrame: 15 })],
+    ['rotate endFrame', () => rangeShot.rotate(rangeTarget, { to: [0, 1, 0], startFrame: 15, endFrame: 21 })],
+    ['orbit startFrame', () => rangeShot.orbit(rangeRig, { to: 0.5, startFrame: 9, endFrame: 20 })],
+    ['dolly endFrame', () => rangeShot.dolly(rangeRig, { to: 8, startFrame: 10, endFrame: 21 })],
+    ['to frame range', () => rangeShot.to(rangeTarget.scale, { x: 2 }, { startFrame: 9, endFrame: 21 })],
+  ]
+  for (const [label, operation] of outOfRangeOperations) {
+    assert.throws(
+      operation,
+      /must stay within Shot range 10-20/,
+      `${label} outside the Shot range must fail fast`,
+    )
+  }
+  assert.equal(rangeShot.timeline.getChildren().length, 0, 'Rejected frame ranges must not add timeline operations')
+
   const directCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
   const directRig = createCameraRig({ camera: directCamera, position: [8, 3, 8], target: [0, 1, 0] })
   const directShot = createShot({ gsap, frameStart: 1, frameEnd: 120 })

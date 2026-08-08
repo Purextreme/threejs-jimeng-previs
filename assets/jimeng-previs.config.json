@@ -1,6 +1,6 @@
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.2.1", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.2.2", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,

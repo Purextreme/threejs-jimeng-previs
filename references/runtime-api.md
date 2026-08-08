@@ -116,6 +116,8 @@ const rig = createCameraRig({
 })
 ```
 
+`targetOffset` is always a world-space offset. It is added after resolving the Target's world position and does not rotate with a tracked `Object3D`. For an attention point that must follow local rotation, target a child `Object3D`/Target Marker or pass a target function that returns the desired world-space point. Do not add a `localTargetOffset` API.
+
 Passing a `Vector3`, array, or vector-like value copies it into direct `targetPosition`. Calling `setTarget(Object3D)` selects object tracking; calling `setTarget(Vector3 | Array)` returns to direct target control. `getTargetPosition()` returns the resolved world-space target including offset.
 
 Orbit, Dolly, Crane, and Truck remain convenience controls that calculate `rig.position` before the same Target + LookAt + Roll pipeline:
@@ -131,7 +133,7 @@ Mount a Rig-controlled camera directly under the Scene. If it is nested, its ent
 
 ### Shot
 
-`createShot` is a thin deterministic wrapper around a paused GSAP timeline. Frame ranges are inclusive, so frames 1-120 span `119 / 24` seconds.
+`createShot` is a thin deterministic wrapper around a paused GSAP timeline. Frame ranges are inclusive, so frames 1-120 span `119 / 24` seconds. Every operation's `startFrame` and `endFrame` must stay within the Shot's inclusive `frameStart`-`frameEnd` range; out-of-range operations fail before changing the timeline.
 
 ```js
 const shot = createShot({ gsap, frameStart: 1, frameEnd: 120 })

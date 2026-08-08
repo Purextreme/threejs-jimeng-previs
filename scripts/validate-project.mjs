@@ -57,7 +57,7 @@ if (config) {
   expectEqual(config.profile, 'jimeng-white-model-v1', 'profile')
   expectNumber(config.fps, 24, 'fps')
 
-  expectEqual(config.runtime?.version, '1.2.1', 'runtime.version')
+  expectEqual(config.runtime?.version, '1.2.2', 'runtime.version')
   if (typeof config.runtime?.path !== 'string' || !config.runtime.path.trim()) {
     fail('runtime.path must be a non-empty project-relative path')
   } else {

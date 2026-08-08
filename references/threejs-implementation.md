@@ -9,7 +9,7 @@ Create `jimeng-previs.config.json` at the project root:
 ```json
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.2.1", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.2.2", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -129,7 +129,9 @@ function updateShot({ frame }) {
 }
 ```
 
-Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. For an `Object3D` target, animate `rig.targetOffset` to move attention relative to the tracked object. Prefer target-based orientation over authored Euler rotation when visual attention must be maintained or transitioned. Do not call `shot.play()` for deterministic capture; seek the same timeline from each requested frame. Use direct `camera.rotation`, quaternion, matrix, or custom camera math whenever the Rig would distort the requested shot.
+Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. For an `Object3D` target, animate `rig.targetOffset` to move attention relative to the tracked object. `targetOffset` is world-space and does not rotate with the target. For a locally attached attention point, prefer a child `Object3D`/Target Marker or a target function that returns a world-space point; do not add a `localTargetOffset` API. Prefer target-based orientation over authored Euler rotation when visual attention must be maintained or transitioned. Do not call `shot.play()` for deterministic capture; seek the same timeline from each requested frame. Use direct `camera.rotation`, quaternion, matrix, or custom camera math whenever the Rig would distort the requested shot.
+
+Keep every Shot operation's inclusive `startFrame`-`endFrame` range inside its parent Shot's `frameStart`-`frameEnd` range. Treat an out-of-range operation as an authoring error and fail before adding it to the timeline.
 
 Choose one position-authoring mode per Camera Rig for a continuous Shot. Direct Position and orbit state are both valid, but their mode is selected before timeline construction rather than animated as hidden Shot state. Orbit/dolly Shot helpers require an already-orbit Rig. Use direct Position + Target or project-local deterministic math when one requested shot does not fit a single helper mode. Reject camera paths that place Camera Position at, or within `1e-6` scene units of, the resolved Target because `lookAt()` is degenerate there.
 
