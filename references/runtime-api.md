@@ -125,7 +125,9 @@ const rig = createCameraRig({ camera, target: product.motionRoot, distance: 8, h
 rig.setOrbitAngle(0.5).setDistance(7).setHeight(2.5).update()
 ```
 
-Use `setOrbitAngle`/`orbit`, `setDistance`/`dolly`, `setHeight`/`crane`, `setTruck`/`truck`, and `setRoll`. `rig.state` remains public for GSAP or custom math. Keep the camera at the scene root or below identity/uniformly scaled parents: Three.js `lookAt()` does not support non-uniformly scaled parents.
+Use `setOrbitAngle`/`orbit`, `setDistance`/`dolly`, `setHeight`/`crane`, `setTruck`/`truck`, and `setRoll`. `rig.state` remains public for GSAP or custom math.
+
+Mount a Rig-controlled camera directly under the Scene. If it is nested, its entire parent chain must have an identity world transform: zero translation and rotation, unit scale. The Rig resolves Targets and orbit positions in world space, then writes the authored position to parent-local `camera.position`; it does not perform world-to-local conversion. Uniformly scaled parents are not supported because they change the resulting world position and orbit distance. Use native Three.js or project-local deterministic coordinate conversion for a transformed Camera Group.
 
 ### Shot
 

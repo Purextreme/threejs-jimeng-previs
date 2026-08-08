@@ -133,6 +133,8 @@ Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. For an `Obje
 
 Choose one position-authoring mode per Camera Rig for a continuous Shot. Direct Position and orbit state are both valid, but their mode is selected before timeline construction rather than animated as hidden Shot state. Orbit/dolly Shot helpers require an already-orbit Rig. Use direct Position + Target or project-local deterministic math when one requested shot does not fit a single helper mode. Reject camera paths that place Camera Position at, or within `1e-6` scene units of, the resolved Target because `lookAt()` is degenerate there.
 
+Mount a Rig-controlled camera directly under the Scene. If it must be nested, every ancestor must contribute an identity transform so the camera's parent world transform remains identity: zero translation and rotation, unit scale. The Rig resolves Targets and orbit positions in world space but writes the result to parent-local `camera.position`; it intentionally does not add hierarchy conversion. Uniform parent scale is therefore unsupported because it changes the authored position and orbit distance. For a transformed Camera Group, use native Three.js or project-local deterministic math with an explicit world-to-local conversion.
+
 ## Visual evidence
 
 Use `npm run capture:jimeng` to create the minimum five animation samples plus configured critical frames. Open the PNG files and judge them visually; do not treat the JSON manifest as visual proof. Add `validation.criticalFrames` to the config for cuts, fastest moves, closest camera approaches, or poses with a high occlusion risk.
