@@ -70,6 +70,12 @@ For imported assets, finish loading and normalization before enabling playback o
 
 If a supplied glTF/GLB fails to load or has suspect structure, use the official Khronos glTF Validator when available. `gltf-transform inspect` is an optional diagnostic for scene contents, bounds, draw calls, and asset weight; do not add it as a required dependency or optimize/rewrite a user asset without a demonstrated need.
 
+### Derived motion without new infrastructure
+
+Animate simple `Object3D` position, rotation, and scale values directly. When one visible transform depends on several authored values or relationships, animate a small, explicit state object and derive the final Three.js transforms inside `onFrame()`. The state must be sufficient to reconstruct any requested frame without replaying earlier frames.
+
+Keep this math local to the project while it serves one shot. Do not add a shared Rig, Controller, animation DSL, or state framework until the same pattern has been proven across projects. Helpers are recommendations, not boundaries; direct Three.js, GSAP, and project-local math remain valid whenever they express the shot more clearly.
+
 ## Install the reusable runtime
 
 Run:
@@ -130,6 +136,8 @@ function updateShot({ frame }) {
 ```
 
 Pass `updateShot` as `createJimengPrevis({ onFrame: updateShot })`. For an `Object3D` target, animate `rig.targetOffset` to move attention relative to the tracked object. `targetOffset` is world-space and does not rotate with the target. For a locally attached attention point, prefer a child `Object3D`/Target Marker or a target function that returns a world-space point; do not add a `localTargetOffset` API. Prefer target-based orientation over authored Euler rotation when visual attention must be maintained or transitioned. Do not call `shot.play()` for deterministic capture; seek the same timeline from each requested frame. Use direct `camera.rotation`, quaternion, matrix, or custom camera math whenever the Rig would distort the requested shot.
+
+Keep the capture path ordered as `frame -> seek -> apply/update -> render`. Avoid damping, springs, physics, or other integrations whose result depends on the previously rendered frame unless arbitrary frame seeking reconstructs exactly the same state. Treat repeatable `renderFrame(frame)` output as more important than natural-feeling playback.
 
 Keep every Shot operation's inclusive `startFrame`-`endFrame` range inside its parent Shot's `frameStart`-`frameEnd` range. Treat an out-of-range operation as an authoring error and fail before adding it to the timeline.
 

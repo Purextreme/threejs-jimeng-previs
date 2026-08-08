@@ -33,12 +33,16 @@ Apply a reuse-first, not reuse-only policy:
 2. Treat helpers as the recommended happy path, not the only valid implementation. Use native Three.js or GSAP when a helper makes the shot harder, less clear, or less reliable.
 3. Keep `createJimengPrevis({ onFrame })` as the core escape hatch. Allow direct `position`, `quaternion`, `matrix`, custom math, and project-local GSAP timelines.
 4. Keep project-local any abstraction that serves one shot, needs many exceptional parameters, or is more complex than direct Three.js.
-5. Preserve the deterministic frame, readiness, capture, white-model, validation, and export contract for every custom implementation.
-6. Maintain one current runtime API. Do not add compatibility wrappers, version branches, aliases, or migration code for superseded project interfaces.
+5. Animate straightforward `Object3D` position, rotation, or scale directly. For motion with derived relationships, animate a small explicit state object and derive the Three.js transforms from it inside `onFrame()`.
+6. Do not add a shared Rig, Controller, API, or other abstraction for one project. Wait until the same need recurs across projects; prefer adding clear guidance before expanding the runtime surface.
+7. Preserve the deterministic frame, readiness, capture, white-model, validation, and export contract for every custom implementation.
+8. Maintain one current runtime API. Do not add compatibility wrappers, version branches, aliases, or migration code for superseded project interfaces.
 
 Treat these as the hard contract: 24 fps deterministic frame time; repeatable authored state from `renderFrame(frame)`; disabled inspection controls during playback/capture; completed GLB/glTF loading before capture; the PNG-sequence to FFmpeg to H.264 MP4 path; `capture:jimeng` and `export:jimeng`; the white-model profile; and visual validation.
 
 Treat camera technique, GSAP use, helper use, primitive composition, object hierarchy, and direct transform math as soft conventions. Never distort a requested shot to fit the helpers.
+
+Author capture as `frame -> seek -> apply/update -> render`. Do not put history-dependent damping, spring, physics, or other incremental simulation on the capture path unless seeking any frame reconstructs exactly the same state. Prefer deterministic `renderFrame(frame)` behavior over more natural-feeling interactive playback.
 
 - From the Skill root, install the bundled runtime instead of rewriting playback, frame stepping, inspection controls, snapshot, white-model override, GLB handling, capture, or MP4 export code:
 
@@ -76,7 +80,7 @@ Treat camera technique, GSAP use, helper use, primitive composition, object hier
 ## Make camera motion deterministic
 
 - Render through one explicit `PerspectiveCamera` unless the requested shot requires orthographic projection.
-- Prefer independently authored Camera Position + Target Position + optional Roll for ordinary camera motion. Use Orbit, Dolly, Crane, and Truck helpers when they naturally describe the shot.
+- Default to independently authored Camera Position + Target Position + optional Roll for ordinary camera motion. Use Orbit, Dolly, Crane, and Truck helpers only when they naturally describe the shot; do not reshape the requested motion merely to use a helper.
 - Keep one position-authoring mode per Camera Rig within a continuous shot. Select `direct` or `orbit` before building its timeline; Shot orbit/dolly helpers must not switch modes implicitly. Author a mixed or unusual path through Position + Target, native Three.js, or project-local math instead of scheduling hidden mode changes.
 - Keep a Rig-controlled camera directly under the Scene, or ensure its entire parent chain has an identity world transform: zero translation and rotation, unit scale. The Rig does not convert its world-space Target or orbit calculations into parent-local `camera.position`; even a uniformly scaled Camera Group changes the authored orbit distance. Use native Three.js or project-local coordinate conversion for a non-identity camera hierarchy.
 - Prefer target-based orientation over authored Euler rotation when the camera must maintain or transition visual attention. Keep direct camera rotation, quaternion, matrix, and custom math available as escape hatches, and never distort a requested shot to fit the Camera Rig.
