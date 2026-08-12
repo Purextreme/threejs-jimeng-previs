@@ -39,6 +39,10 @@ function expectNumber(actual, expected, label, tolerance = 0) {
   }
 }
 
+function isHexColor(value) {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
+}
+
 const packageJson = readJson(path.join(projectDir, 'package.json'), 'package.json')
 const config = readJson(path.join(projectDir, 'jimeng-previs.config.json'), 'jimeng-previs.config.json')
 
@@ -57,7 +61,7 @@ if (config) {
   expectEqual(config.profile, 'jimeng-white-model-v1', 'profile')
   expectNumber(config.fps, 24, 'fps')
 
-  expectEqual(config.runtime?.version, '1.2.2', 'runtime.version')
+  expectEqual(config.runtime?.version, '1.3.2', 'runtime.version')
   if (typeof config.runtime?.path !== 'string' || !config.runtime.path.trim()) {
     fail('runtime.path must be a non-empty project-relative path')
   } else {
@@ -111,6 +115,26 @@ if (config) {
   expectEqual(white.transparent, false, 'whiteModel.transparent')
   expectEqual(white.textures, false, 'whiteModel.textures')
   expectEqual(String(white.emissive || '').toLowerCase(), '#000000', 'whiteModel.emissive')
+
+  const materialPreview = config.materialPreview
+  if (!materialPreview || typeof materialPreview !== 'object' || Array.isArray(materialPreview)) {
+    fail('materialPreview must be an object')
+  } else {
+    if (typeof materialPreview.enabled !== 'boolean') fail('materialPreview.enabled must be a boolean')
+    expectEqual(materialPreview.purpose, 'object-marking', 'materialPreview.purpose')
+    if (!materialPreview.colors || typeof materialPreview.colors !== 'object' || Array.isArray(materialPreview.colors)) {
+      fail('materialPreview.colors must be an object mapping object labels to #rrggbb colors')
+    } else {
+      for (const [label, color] of Object.entries(materialPreview.colors)) {
+        if (!label.trim() || !isHexColor(color)) {
+          fail(`materialPreview.colors entries must map non-empty labels to #rrggbb colors; got ${JSON.stringify(label)}: ${JSON.stringify(color)}`)
+        }
+      }
+      if (materialPreview.enabled && Object.keys(materialPreview.colors).length === 0) {
+        fail('materialPreview.colors must contain at least one explicitly requested object color when materialPreview.enabled is true')
+      }
+    }
+  }
 
   expectEqual(config.lighting?.mode, 'studio-neutral', 'lighting.mode')
   if (typeof config.camera?.name !== 'string' || !config.camera.name.trim()) fail('camera.name must be a non-empty string')
@@ -178,4 +202,4 @@ if (errors.length > 0) {
   process.exit(1)
 }
 
-console.log(`PASS: Jimeng white-model project contract is valid (${warnings.length} warning(s))`)
+console.log(`PASS: Jimeng ${config?.materialPreview?.enabled ? 'marker-color preview' : 'white-model'} project contract is valid (${warnings.length} warning(s))`)

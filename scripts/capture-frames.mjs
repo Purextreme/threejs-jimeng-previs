@@ -5,6 +5,9 @@ import path from 'node:path'
 import process from 'node:process'
 import {
   buildViteProject,
+  assertCaptureDiagnostics,
+  assertFrameMaterials,
+  getPreviewMode,
   importPlaywright,
   launchInstalledBrowser,
   parseArguments,
@@ -35,6 +38,7 @@ const { config } = readProjectConfig(projectDir)
 const frameStart = Number(config.frameStart)
 const frameEnd = Number(config.frameEnd)
 const resolution = config.resolution || { width: 1280, height: 720 }
+const previewMode = getPreviewMode(config)
 const sampleCount = Math.max(5, Number(config.validation?.minimumAnimationSamples) || 5)
 const criticalFrames = Array.isArray(config.validation?.criticalFrames) ? config.validation.criticalFrames : []
 const requestedFrames = args.all
@@ -65,6 +69,7 @@ const manifest = {
   frameStart,
   frameEnd,
   fps: config.fps,
+  previewMode,
   frames: [],
 }
 
@@ -105,9 +110,8 @@ try {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       return { ...state, replay: api.renderFrame(requestedFrame, { capture: true }) }
     }, frame)
-    if (!diagnostics.allMeshesUseWhiteMaterial) {
-      throw new Error(`Frame ${frame} contains a visible mesh outside the Jimeng white-model profile`)
-    }
+    assertFrameMaterials(config, diagnostics, frame)
+    assertCaptureDiagnostics(diagnostics, frame, resolution)
     const filename = `frame_${String(frame).padStart(4, '0')}.png`
     await canvas.screenshot({ path: path.join(outputDir, filename), type: 'png' })
     manifest.frames.push({ frame, filename, diagnostics })

@@ -7,7 +7,12 @@ import { getPrevisBounds, loadPrevisModel } from '../../src/jimeng-previs/model.
 import { createBox, createCapsule, createProductBlock } from '../../src/jimeng-previs/primitives.js'
 import { createShot } from '../../src/jimeng-previs/shot.js'
 import { createPrevisStage } from '../../src/jimeng-previs/stage.js'
-import { restoreOriginalMaterials } from '../../src/jimeng-previs/white-model.js'
+import {
+  applyJimengMarkerColor,
+  createJimengMarkerMaterial,
+  restoreOriginalMaterials,
+} from '../../src/jimeng-previs/white-model.js'
+import { assertCaptureDiagnostics, assertFrameMaterials, getPreviewMode } from './runtime-tools.mjs'
 
 globalThis.ProgressEvent ??= class ProgressEvent {
   constructor(type, init = {}) { this.type = type; Object.assign(this, init) }
@@ -421,9 +426,82 @@ async function testStageAndPrimitives() {
   shadowlessStage.dispose()
 }
 
+function testMarkerColorsAndCapturePolicy() {
+  assert.throws(
+    () => createJimengMarkerMaterial(),
+    /Marker color is required and must be explicitly assigned from the user request or clear reference evidence/,
+    'Objects must remain white when no marker color has explicit or reference-backed intent',
+  )
+
+  const customMarker = createJimengMarkerMaterial({ color: '#b34f5e' })
+  assert.equal(customMarker.roughness, 0.5)
+  assert.equal(customMarker.metalness, 0)
+  assert.equal(customMarker.opacity, 1)
+  assert.equal(customMarker.transparent, false)
+  assert.equal(customMarker.emissive.getHex(), 0x000000)
+  assert.equal(customMarker.emissiveIntensity, 0)
+  assert.equal(customMarker.userData.jimengDisplayRole, 'marker-color')
+  for (const slot of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'envMap']) {
+    assert.equal(customMarker[slot], null, `Marker material ${slot} must remain empty`)
+  }
+
+  assert.equal(customMarker.color.getHex(), 0xb34f5e, 'User marker color must remain exact')
+  assert.throws(
+    () => createJimengMarkerMaterial({ color: 'red' }),
+    /Marker color must be/,
+    'Marker colors must use an unambiguous basic color value',
+  )
+
+  const original = new THREE.MeshBasicMaterial({ color: 0xffffff })
+  const root = new THREE.Group()
+  const markedMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), original)
+  root.add(markedMesh)
+  const applied = applyJimengMarkerColor(root, { color: '#b34f5e' })
+  assert.equal(applied.meshCount, 1)
+  assert.equal(markedMesh.material.color.getHex(), 0xb34f5e)
+  assert.equal(restoreOriginalMaterials(root), 1)
+  assert.equal(markedMesh.material, original, 'Marker preview must preserve original materials for restoration')
+
+  const markerConfig = { materialPreview: { enabled: true } }
+  const whiteConfig = { materialPreview: { enabled: false } }
+  assert.equal(getPreviewMode(markerConfig), 'marker-colors')
+  assert.equal(getPreviewMode(whiteConfig), 'white-model')
+  assert.doesNotThrow(() => assertFrameMaterials(markerConfig, {
+    allMeshesUseMarkerMaterials: true,
+    allMeshesUseWhiteMaterial: false,
+  }, 1), 'Declared marker colors must pass the focused capture assertion')
+  assert.throws(() => assertFrameMaterials(whiteConfig, {
+    allMeshesUseMarkerMaterials: true,
+    allMeshesUseWhiteMaterial: false,
+  }, 1), /outside the Jimeng white-model profile/, 'Undeclared colors must still fail white-model capture')
+  assert.throws(() => assertFrameMaterials(markerConfig, {
+    allMeshesUseMarkerMaterials: false,
+    allMeshesUseWhiteMaterial: false,
+  }, 1), /outside the Jimeng marker-color profile/, 'Marker mode must reject real material effects')
+
+  const stableDiagnostics = {
+    frame: 1,
+    camera: [0, 2, 6],
+    canvas: { width: 1280, height: 720 },
+    replay: { frame: 1, camera: [0, 2, 6], canvas: { width: 1280, height: 720 } },
+  }
+  assert.doesNotThrow(() => assertCaptureDiagnostics(stableDiagnostics, 1, { width: 1280, height: 720 }))
+  assert.throws(
+    () => assertCaptureDiagnostics({ ...stableDiagnostics, replay: { ...stableDiagnostics.replay, camera: [0, 2, 5] } }, 1, { width: 1280, height: 720 }),
+    /camera state changed/,
+    'Capture must reject non-repeatable camera state',
+  )
+  assert.throws(
+    () => assertCaptureDiagnostics({ ...stableDiagnostics, canvas: { width: 640, height: 360 } }, 1, { width: 1280, height: 720 }),
+    /canvas must be 1280x720/,
+    'Capture must reject the wrong rendered dimensions',
+  )
+}
+
 await testCameraRig()
 await testShot()
 await testModels()
 await testStageAndPrimitives()
+testMarkerColorsAndCapturePolicy()
 gsap?.ticker.sleep()
-console.log(`PASS: camera, GLB, stage, primitive, deterministic replay, and static hold regressions${gsap ? ', including GSAP Shot' : ''}`)
+console.log(`PASS: camera, GLB, stage, primitive, marker-color capture policy, deterministic replay, and static hold regressions${gsap ? ', including GSAP Shot' : ''}`)

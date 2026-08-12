@@ -32,6 +32,39 @@ export function readProjectConfig(projectDir) {
   return { config, configPath }
 }
 
+export function getPreviewMode(config) {
+  return config?.materialPreview?.enabled === true ? 'marker-colors' : 'white-model'
+}
+
+export function assertFrameMaterials(config, diagnostics, frame) {
+  const previewMode = getPreviewMode(config)
+  if (previewMode === 'marker-colors') {
+    if (!diagnostics.allMeshesUseMarkerMaterials) {
+      throw new Error(`Frame ${frame} contains a visible mesh outside the Jimeng marker-color profile`)
+    }
+    return previewMode
+  }
+  if (!diagnostics.allMeshesUseWhiteMaterial) {
+    throw new Error(`Frame ${frame} contains a visible mesh outside the Jimeng white-model profile`)
+  }
+  return previewMode
+}
+
+export function assertCaptureDiagnostics(diagnostics, frame, resolution) {
+  if (diagnostics.frame !== frame || diagnostics.replay?.frame !== frame) {
+    throw new Error(`Frame ${frame} did not replay at the requested frame`)
+  }
+  const expectedCanvas = { width: resolution.width, height: resolution.height }
+  for (const state of [diagnostics, diagnostics.replay]) {
+    if (state?.canvas?.width !== expectedCanvas.width || state?.canvas?.height !== expectedCanvas.height) {
+      throw new Error(`Frame ${frame} canvas must be ${expectedCanvas.width}x${expectedCanvas.height}`)
+    }
+  }
+  if (JSON.stringify(diagnostics.camera) !== JSON.stringify(diagnostics.replay.camera)) {
+    throw new Error(`Frame ${frame} camera state changed when the same frame was replayed`)
+  }
+}
+
 export async function importPlaywright(projectDir) {
   const candidates = [
     path.join(projectDir, 'node_modules', 'playwright-core', 'index.mjs'),

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Three.js 即梦白模预演"
-  short_description: "复用模块化白模预演 runtime，并执行多帧视觉验收"
-  default_prompt: "Use $threejs-jimeng-previs with reuse-first helpers or native Three.js escape hatches, then validate sampled frames and MP4."
+  display_name: "Three.js 即梦预演"
+  short_description: "搭建白模或对象标记色预演，并执行多帧视觉验收"
+  default_prompt: "Use $threejs-jimeng-previs to build a white-model or marker-color previs, then validate sampled frames and MP4."

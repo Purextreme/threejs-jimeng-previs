@@ -9,7 +9,7 @@ Create `jimeng-previs.config.json` at the project root:
 ```json
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.2.2", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.3.2", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -22,6 +22,11 @@ Create `jimeng-previs.config.json` at the project root:
     "transparent": false,
     "textures": false,
     "emissive": "#000000"
+  },
+  "materialPreview": {
+    "enabled": false,
+    "purpose": "object-marking",
+    "colors": {}
   },
   "lighting": { "mode": "studio-neutral" },
   "camera": { "name": "PrevisCamera", "controlsDuringCapture": false },
@@ -91,6 +96,14 @@ Prefer helpers for stable repeated patterns, not as a mandatory scene framework.
 ## Shared white material
 
 Use `createJimengWhiteMaterial` and `applyJimengWhiteModel` for project-created meshes, and `loadPrevisModel` for GLB/glTF assets. Reapply the profile when meshes are added dynamically. If skinned or vertex-animated content fails with a shared material in the installed Three.js version, clone the same numeric profile only for the affected mesh and retain its required flags.
+
+## Object marker colors
+
+Use marker colors when the user expresses a clear object-color intent. Treat that color as the dominant approximate marker for the named object, then reconcile detail assignments in this order: explicit user wording, visible reference evidence, and high-confidence real-world conventions. Apply the requested color to the dominant recognizable mass while retaining distinct basic colors for clearly supported detail components when that improves recognition. Record the final assignments under `materialPreview.colors` and keep unrelated objects white.
+
+When there is no usable reference or reliable evidence for detail colors, apply the requested marker color uniformly across the named object hierarchy. Prefer this literal fallback over inventing exceptions. These assignments still do not recreate glass, metal, gloss, texture, or other real material properties.
+
+Marker colors change only the base color. They retain the neutral `MeshStandardMaterial` display profile: roughness `0.5`, metalness `0`, full opacity, no transparency, black zero-intensity emissive, and no maps or textures. Do not use marker colors to imply metal, glass, fabric, gloss, texture, brand finish, or final art direction. `capture:jimeng` accepts this profile only when it is declared; undeclared colored meshes still fail white-model capture, and physically styled materials still fail marker-color capture.
 
 ## Neutral studio rig
 

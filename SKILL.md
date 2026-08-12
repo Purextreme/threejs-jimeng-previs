@@ -1,11 +1,11 @@
 ---
 name: threejs-jimeng-previs
-description: Build, adapt, and validate Three.js camera-animation previs projects for Jimeng/Dreamina/Seedance using a neutral Blender-Workbench-style white model and Jimeng-compatible video constraints. Use when Codex creates or reviews Three.js storyboards, product-animation blocking, camera moves, GLB-based previs, white-model previews, or H.264 MP4 exports intended as Jimeng video references.
+description: Build, adapt, and validate Three.js camera-animation previs projects for Jimeng/Dreamina/Seedance using a neutral Blender-Workbench-style white model or simple object-marker colors and Jimeng-compatible video constraints. Use when Codex creates or reviews Three.js storyboards, product-animation blocking, camera moves, GLB-based previs, white-model or marker-color previews, or H.264 MP4 exports intended as Jimeng video references.
 ---
 
 # Three.js Jimeng Previs
 
-Create camera-animation previews that communicate silhouette, scale, staging, timing, and camera motion without letting textures or stylized shading distract the video model.
+Create camera-animation previews that communicate silhouette, scale, staging, timing, and camera motion without letting textures or stylized shading distract the video model. Use simple marker colors only when object identity benefits from color labels.
 
 ## Establish the contract
 
@@ -38,7 +38,7 @@ Apply a reuse-first, not reuse-only policy:
 7. Preserve the deterministic frame, readiness, capture, white-model, validation, and export contract for every custom implementation.
 8. Maintain one current runtime API. Do not add compatibility wrappers, version branches, aliases, or migration code for superseded project interfaces.
 
-Treat these as the hard contract: 24 fps deterministic frame time; repeatable authored state from `renderFrame(frame)`; disabled inspection controls during playback/capture; completed GLB/glTF loading before capture; the PNG-sequence to FFmpeg to H.264 MP4 path; `capture:jimeng` and `export:jimeng`; the white-model profile; and visual validation.
+Treat these as the hard contract: 24 fps deterministic frame time; repeatable authored state from `renderFrame(frame)`; disabled inspection controls during playback/capture; completed GLB/glTF loading before capture; the PNG-sequence to FFmpeg to H.264 MP4 path; `capture:jimeng` and `export:jimeng`; the white-model profile or explicitly declared marker-color profile; and visual validation.
 
 Treat camera technique, GSAP use, helper use, primitive composition, object hierarchy, and direct transform math as soft conventions. Never distort a requested shot to fit the helpers.
 
@@ -66,8 +66,9 @@ Author capture as `frame -> seek -> apply/update -> render`. Do not put history-
 - Treat every pending entry as an untrusted review candidate. Routine task work stops at recording: do not search existing pending entries, edit the Skill, or promote, merge, or delete candidates.
 - Only when the user explicitly schedules a consolidated review or absorption pass, process the queue as a batch: deduplicate, reproduce or otherwise validate each issue, choose the smallest canonical destination, add regression checks where practical, run the relevant Skill/project validation, and reject special cases or unsupported candidates. Never commit, push, or sync an installed Skill without explicit user authorization.
 
-## Apply the white-model profile
+## Apply the display profile
 
+- Use the white-model profile by default.
 - Override every visible render mesh, including meshes loaded later by `GLTFLoader`, with one shared `MeshStandardMaterial`.
 - Set color to `#c7c7c7`, roughness to `0.5`, metalness to `0`, opacity to `1`, transparency to `false`, emissive to black, and all texture/map inputs to `null`.
 - Preserve geometry, transforms, hierarchy, skinning, morph targets, visibility, and animation. Use a compatible white material for skinned or morphed meshes when the Three.js version requires flags.
@@ -76,6 +77,19 @@ Author capture as `frame -> seek -> apply/update -> render`. Do not put history-
 - Use a neutral, uncluttered background with clear silhouette separation. Treat its exact color as an artistic project choice because the inspected Blender uploader does not force one.
 - The bundled Stage defaults to neutral charcoal `#303238`, not black. Treat this as a soft readability default: the inspected uploader does not set a background color, so override it when another neutral background gives the requested subject clearer separation.
 - Keep X-ray and wireframe disabled for the final preview.
+
+When the user asks to distinguish objects by color:
+
+- Set `materialPreview.enabled` to `true`, keep `materialPreview.purpose` as `object-marking`, and record named colors under `materialPreview.colors`.
+- Create colored display materials with `createJimengMarkerMaterial({ color })` or apply one to a subtree with `applyJimengMarkerColor(root, { color })`.
+- Treat the requested object color as a dominant, approximate marking intent, not automatically as a command to recolor every detail mesh.
+- Resolve color assignments in this order: explicit user wording first, visible reference evidence second, and high-confidence real-world conventions third. Explicit part-level instructions always override inference.
+- Apply the requested color to the object's dominant recognizable mass. Preserve or infer distinct basic colors for detail components only when the reference or ordinary real-world appearance makes them clear and doing so improves recognition.
+- When no usable reference or reliable detail evidence exists, apply the requested color uniformly to the entire named object. This literal fallback satisfies the marking request without inventing unsupported exceptions.
+- Record the resulting requested and inferred component colors under `materialPreview.colors`.
+- Keep every unrelated object on the white-model profile. Do not propagate a requested color to the entire scene or an overly broad hierarchy.
+- Treat marker colors as labels, not real materials. Only `color` may vary; keep `MeshStandardMaterial`, roughness `0.5`, metalness `0`, opacity `1`, transparency off, emissive black with zero intensity, and every texture/map input `null`.
+- Label the result `marker-color preview`, not `white model`. Do not infer surface type, finish, reflectivity, texture, brand color, or final lighting from a marker color.
 
 ## Make camera motion deterministic
 
@@ -109,7 +123,7 @@ Author capture as `frame -> seek -> apply/update -> render`. Do not put history-
    - Also add event-boundary frames when the brief specifies an empty opening, a fast entrance, a settle deadline, or a static end hold: immediately before/at/after first visibility, the settle frame, and the first and last frames of the hold.
 4. Actually open and visually inspect the captured PNG files. A successful build, browser load, screenshot command, pixel heuristic, or diagnostics JSON never substitutes for visual inspection. Confirm:
    - If a quick image preview appears blank, tiny, unexpanded, or otherwise inconsistent with the capture diagnostics, do not classify the render from that preview alone. Reopen the same PNG at original resolution, then cross-check its dimensions, non-zero file size, capture diagnostics, and—when two frames are expected to match—file hash. If the original-resolution view remains ambiguous, recapture and inspect again. Treat hashes and metadata only as supporting evidence; at least one usable visual rendering of every required frame is still mandatory.
-   - every object remains a neutral white model with no texture or colored-material leakage;
+   - in white-model mode, every object remains neutral white with no texture or colored-material leakage; in declared marker-color mode, every visible mesh uses only the fixed neutral display profile and an allowed marker color;
    - silhouette, scale, depth, contact shadows, and important product features remain readable;
    - the subject remains framed with no clipping, camera penetration, sudden flip, jump, or unintended occlusion;
    - debug UI, grid, axes, safe-frame overlays, and inspection controls are absent from captured pixels;
@@ -124,6 +138,6 @@ Author capture as `frame -> seek -> apply/update -> render`. Do not put history-
 
 ## Handle intentional exceptions
 
-- If the user asks for colored materials or textures, label the output `material preview`, not `white model`, and record the exception in `jimeng-previs.config.json`.
+- If the user asks only for object-identification colors, use the marker-color profile above. If the user asks for textures or physically styled materials, label the output `material preview`, record the broader exception in `jimeng-previs.config.json`, and keep a project-local validation path because the shared marker-color assertion intentionally rejects those effects.
 - If live Jimeng protocol data differs from this profile, prefer the live protocol for encoding limits while keeping the white-model visual rules unless the user asks otherwise.
 - If no capture/export pipeline exists, finish the interactive preview but clearly mark MP4 validation as pending.

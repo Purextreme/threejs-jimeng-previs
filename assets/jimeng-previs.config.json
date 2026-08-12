@@ -1,6 +1,6 @@
 {
   "profile": "jimeng-white-model-v1",
-  "runtime": { "version": "1.2.2", "path": "src/jimeng-previs" },
+  "runtime": { "version": "1.3.2", "path": "src/jimeng-previs" },
   "fps": 24,
   "frameStart": 1,
   "frameEnd": 120,
@@ -13,6 +13,11 @@
     "transparent": false,
     "textures": false,
     "emissive": "#000000"
+  },
+  "materialPreview": {
+    "enabled": false,
+    "purpose": "object-marking",
+    "colors": {}
   },
   "lighting": { "mode": "studio-neutral" },
   "camera": { "name": "PrevisCamera", "controlsDuringCapture": false },

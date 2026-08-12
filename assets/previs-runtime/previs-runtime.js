@@ -20,31 +20,51 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function materialIsWhiteModel(material) {
-  const materials = Array.isArray(material) ? material : [material]
-  return materials.length > 0 && materials.every((item) => {
-    if (!item?.isMeshStandardMaterial) return false
-    const color = item.color?.getHex?.()
-    const mapsAreEmpty = [
-      'map',
-      'alphaMap',
-      'aoMap',
-      'bumpMap',
-      'displacementMap',
-      'emissiveMap',
-      'envMap',
-      'lightMap',
-      'metalnessMap',
-      'normalMap',
-      'roughnessMap',
-    ].every((slot) => item[slot] == null)
+const TEXTURE_SLOTS = [
+  'map',
+  'alphaMap',
+  'aoMap',
+  'bumpMap',
+  'displacementMap',
+  'emissiveMap',
+  'envMap',
+  'lightMap',
+  'metalnessMap',
+  'normalMap',
+  'roughnessMap',
+]
 
-    return color === 0xc7c7c7
-      && item.roughness === 0.5
-      && item.metalness === 0
-      && item.opacity === 1
-      && item.transparent === false
-      && mapsAreEmpty
+function materialUsesNeutralDisplayProfile(item) {
+  if (!item?.isMeshStandardMaterial) return false
+  const mapsAreEmpty = TEXTURE_SLOTS.every((slot) => item[slot] == null)
+  return item.roughness === 0.5
+    && item.metalness === 0
+    && item.opacity === 1
+    && item.transparent === false
+    && item.emissive?.getHex?.() === 0x000000
+    && item.emissiveIntensity === 0
+    && mapsAreEmpty
+}
+
+function everyMaterial(material, predicate) {
+  const materials = Array.isArray(material) ? material : [material]
+  return materials.length > 0 && materials.every(predicate)
+}
+
+function materialIsWhiteModel(material) {
+  return everyMaterial(material, (item) => (
+    materialUsesNeutralDisplayProfile(item)
+    && item.color?.getHex?.() === 0xc7c7c7
+    && item.userData?.jimengDisplayRole === 'white-model'
+  ))
+}
+
+function materialIsMarkerPreview(material) {
+  return everyMaterial(material, (item) => {
+    if (!materialUsesNeutralDisplayProfile(item)) return false
+    const role = item.userData?.jimengDisplayRole
+    return role === 'marker-color'
+      || (role === 'white-model' && item.color?.getHex?.() === 0xc7c7c7)
   })
 }
 
@@ -154,10 +174,12 @@ export function createJimengPrevis(options) {
   function getState() {
     let visibleMeshes = 0
     let whiteModelMeshes = 0
+    let markerPreviewMeshes = 0
     scene.traverse((object) => {
       if (!object.isMesh || !object.visible) return
       visibleMeshes += 1
       if (materialIsWhiteModel(object.material)) whiteModelMeshes += 1
+      if (materialIsMarkerPreview(object.material)) markerPreviewMeshes += 1
     })
 
     return {
@@ -172,7 +194,9 @@ export function createJimengPrevis(options) {
       captureMode,
       visibleMeshes,
       whiteModelMeshes,
+      markerPreviewMeshes,
       allMeshesUseWhiteMaterial: visibleMeshes > 0 && visibleMeshes === whiteModelMeshes,
+      allMeshesUseMarkerMaterials: visibleMeshes > 0 && visibleMeshes === markerPreviewMeshes,
       camera: camera.position.toArray().map((value) => Number(value.toFixed(4))),
       canvas: { width: canvas.width, height: canvas.height },
     }
@@ -269,7 +293,7 @@ export function createJimengPrevis(options) {
   window.addEventListener('resize', onResize)
 
   const api = {
-    version: '1.2.2',
+    version: '1.3.2',
     get ready() { return runtimeReady },
     get readyError() { return readyError },
     whenReady: null,

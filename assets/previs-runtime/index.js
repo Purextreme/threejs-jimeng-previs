@@ -13,7 +13,9 @@ export { createShot } from './shot.js'
 export { createPrevisStage, createStudioLighting } from './stage.js'
 export {
   JIMENG_WHITE_MODEL_PROFILE,
+  applyJimengMarkerColor,
   applyJimengWhiteModel,
+  createJimengMarkerMaterial,
   createJimengWhiteMaterial,
   restoreOriginalMaterials,
 } from './white-model.js'

@@ -56,6 +56,11 @@ if (fs.existsSync(configTarget)) {
   projectConfig.runtime = defaultConfig.runtime
   projectConfig.output ??= defaultConfig.output
   projectConfig.output.path ??= defaultConfig.output.path
+  projectConfig.materialPreview ??= {}
+  projectConfig.materialPreview.enabled ??= defaultConfig.materialPreview.enabled
+  projectConfig.materialPreview.purpose = defaultConfig.materialPreview.purpose
+  delete projectConfig.materialPreview.defaultColor
+  projectConfig.materialPreview.colors ??= defaultConfig.materialPreview.colors
   projectConfig.validation ??= {}
   projectConfig.validation.minimumAnimationSamples = Math.max(
     5,

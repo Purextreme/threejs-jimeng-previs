@@ -19,6 +19,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import {
   applyJimengWhiteModel,
   createJimengPrevis,
+  createJimengMarkerMaterial,
   createJimengWhiteMaterial,
 } from './jimeng-previs/index.js'
 
@@ -54,13 +55,22 @@ createJimengPrevis({
 })
 ```
 
+For object-identification color only, declare `materialPreview.enabled: true` in the project config and create a neutral marker material:
+
+```js
+const requestedMarker = createJimengMarkerMaterial({ color: '#b34f5e' })
+requestedRegion.material = requestedMarker
+```
+
+`color` is required. Resolve assignments from explicit user wording, visible reference evidence, then high-confidence real-world conventions. Apply the requested color to the dominant object mass and preserve distinct detail colors only when evidence supports them. Without usable detail evidence, apply the requested color uniformly to the named object rather than inventing exceptions. Marker materials deliberately expose no physical-material options: only the base display color changes, while roughness, metalness, opacity, emissive, and texture slots remain fixed to the neutral previs profile.
+
 The runtime publishes `window.__JIMENG_PREVIS__` for capture automation:
 
 - `renderFrame(frame, { capture })`: seek and render an inclusive integer frame.
 - `play()` and `pause()`: control interactive playback.
 - `setInspection(enabled)`: toggle `OrbitControls` without changing the authored capture path.
 - `snapshot()`: download the current canvas as PNG.
-- `getState()`: return frame, camera, canvas, and white-material diagnostics.
+- `getState()`: return frame, camera, canvas, white-model diagnostics, and marker-color diagnostics.
 - `ready`, `readyError`, and `whenReady`: expose the optional asynchronous asset-readiness gate.
 
 Pass one promise or an array of promises as `ready`. The runtime publishes its API immediately but does not render, play, or allow capture until all promises resolve:
